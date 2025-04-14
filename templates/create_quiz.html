@@ -1,0 +1,136 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create New Quiz</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/creator.css') }}">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="back-nav">
+            <a href="{{ url_for('dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        
+        <div class="page-header">
+            <h1>Create New Quiz</h1>
+            <p class="subtitle">Set up your quiz details below</p>
+        </div>
+        
+        <div class="create-quiz-form">
+            <form action="{{ url_for('create_quiz') }}" method="post" enctype="multipart/form-data">
+                <div class="form-section">
+                    <h2 class="section-title">Basic Information</h2>
+                    
+                    <div class="form-group">
+                        <label for="title">Quiz Title <span class="required">*</span></label>
+                        <input type="text" id="title" name="title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" rows="4"></textarea>
+                        <span class="form-hint">Provide instructions or context for your quiz participants.</span>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="duration">Duration (minutes) <span class="required">*</span></label>
+                            <input type="number" id="duration" name="duration" min="1" max="120" value="10" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="quiz_type">Quiz Type <span class="required">*</span></label>
+                            <select id="quiz_type" name="quiz_type" required>
+                                <option value="live">Live Quiz</option>
+                                <option value="scheduled">Scheduled Quiz</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="scheduled-options" class="form-row hidden">
+                        <div class="form-group">
+                            <label for="scheduled_date">Date <span class="required">*</span></label>
+                            <input type="date" id="scheduled_date" name="scheduled_date">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduled_time">Time <span class="required">*</span></label>
+                            <input type="time" id="scheduled_time" name="scheduled_time">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2 class="section-title">Advanced Options</h2>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="shuffle_questions" name="shuffle_questions">
+                        <label for="shuffle_questions">Shuffle questions</label>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="shuffle_options" name="shuffle_options">
+                        <label for="shuffle_options">Shuffle answer options</label>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="use_facial_analysis" name="use_facial_analysis">
+                        <label for="use_facial_analysis">Enable facial emotion analysis</label>
+                        <span class="form-hint">
+                            <i class="fas fa-info-circle"></i>
+                            Participants will need to enable their camera for emotion tracking.
+                            This helps analyze engagement and understanding.
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="primary-btn">
+                        <i class="fas fa-plus"></i> Create Quiz
+                    </button>
+                    <a href="{{ url_for('dashboard') }}" class="secondary-btn">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const quizTypeSelect = document.getElementById('quiz_type');
+            const scheduledOptions = document.getElementById('scheduled-options');
+            
+            // Show/hide scheduled options based on quiz type
+            quizTypeSelect.addEventListener('change', function() {
+                if (this.value === 'scheduled') {
+                    scheduledOptions.classList.remove('hidden');
+                    document.getElementById('scheduled_date').required = true;
+                    document.getElementById('scheduled_time').required = true;
+                } else {
+                    scheduledOptions.classList.add('hidden');
+                    document.getElementById('scheduled_date').required = false;
+                    document.getElementById('scheduled_time').required = false;
+                }
+            });
+            
+            // Set default date and time values for scheduled quizzes
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            const dateInput = document.getElementById('scheduled_date');
+            dateInput.min = today.toISOString().split('T')[0];
+            dateInput.value = tomorrow.toISOString().split('T')[0];
+            
+            const timeInput = document.getElementById('scheduled_time');
+            const hours = today.getHours().toString().padStart(2, '0');
+            const minutes = today.getMinutes().toString().padStart(2, '0');
+            timeInput.value = `${hours}:${minutes}`;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,298 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }} - Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quize_r.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="back-nav">
+            <a href="{{ url_for('dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        
+        <div class="result-header">
+            <h1 class="quiz-title">{{ quiz.title }} - Results</h1>
+            
+            <div class="result-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Created by:</span>
+                    <span class="meta-value">{{ quiz.creator.username }}</span>
+                </div>
+                
+                <div class="meta-item">
+                    <span class="meta-label">Completed on:</span>
+                    <span class="meta-value">{{ format_datetime(attempt.completed_at) }}</span>
+                </div>
+                
+                <div class="meta-item">
+                    <span class="meta-label">Duration:</span>
+                    <span class="meta-value">{{ quiz.duration }} minutes</span>
+                </div>
+                
+                <div class="meta-item">
+                    <span class="meta-label">Questions:</span>
+                    <span class="meta-value">{{ quiz.questions|length }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="result-summary">
+            <div class="score-card">
+                <div class="score-title">Your Score</div>
+                <div class="score-value">{{ score|round(1) }}%</div>
+                <div class="score-details">
+                    <div class="score-item">
+                        <span class="item-label">Correct Answers:</span>
+                        <span class="item-value">{{ questions_with_answers|selectattr('is_correct', 'eq', true)|list|length }}</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="item-label">Total Questions:</span>
+                        <span class="item-value">{{ questions_with_answers|length }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if quiz.use_facial_analysis and emotion_summary %}
+                <div class="emotion-summary-card">
+                    <div class="emotion-title">Emotional Response</div>
+                    <div class="emotion-chart-container">
+                        <canvas id="emotionChart"></canvas>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="performance-card">
+                <div class="performance-title">Performance</div>
+                <div class="performance-chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="detailed-results">
+            <h2 class="section-title">Question Results</h2>
+            
+            <div class="questions-results">
+                {% for item in questions_with_answers %}
+                    <div class="question-result-card">
+                        <div class="question-header">
+                            <span class="question-number">Question {{ loop.index }}</span>
+                            <span class="result-badge {{ 'correct' if item.is_correct else 'incorrect' }}">
+                                {% if item.is_correct %}
+                                    <i class="fas fa-check"></i> Correct
+                                {% else %}
+                                    <i class="fas fa-times"></i> Incorrect
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="question-content">
+                            <p class="question-text">{{ item.question.text }}</p>
+                            
+                            {% if item.question.image %}
+                                <div class="question-image">
+                                    <img src="{{ url_for('static', filename='uploads/questions/' + item.question.image) }}" alt="Question Image">
+                                </div>
+                            {% endif %}
+                            
+                            <div class="answer-display">
+                                <div class="answer-item">
+                                    <span class="answer-label">Your Answer:</span>
+                                    <span class="answer-value {{ 'correct' if item.is_correct else 'incorrect' }}">
+                                        {{ item.user_answer }}
+                                    </span>
+                                </div>
+                                
+                                {% if not item.is_correct %}
+                                    <div class="answer-item">
+                                        <span class="answer-label">Correct Answer:</span>
+                                        <span class="answer-value correct">
+                                            {{ item.question.correct_answer }}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="answer-item">
+                                    <span class="answer-label">Time Taken:</span>
+                                    <span class="answer-value">
+                                        {{ item.answer_time|round(1) }} seconds
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            {% if quiz.use_facial_analysis and item.emotions %}
+                                <div class="question-emotions">
+                                    <h4>Your Emotional Response</h4>
+                                    
+                                    <div class="emotion-bars">
+                                        {% set emotions = item.emotions %}
+                                        
+                                        {% if emotions.happy is defined %}
+                                            <div class="emotion-bar">
+                                                <span class="emotion-label">Satisfied</span>
+                                                <div class="progress-container">
+                                                    <div class="progress-bar satisfied" style="width: '{{ (emotions.happy * 100)|round(1) }}%'"></div>
+                                                </div>
+                                                <span class="emotion-value">{{ (emotions.happy * 100)|round(1) }}%</span>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if emotions.neutral is defined %}
+                                            <div class="emotion-bar">
+                                                <span class="emotion-label">Neutral</span>
+                                                <div class="progress-container">
+                                                    <div class="progress-bar neutral" style="width: '{{ (emotions.neutral * 100)|round(1) }}%"></div>
+                                                </div>
+                                                <span class="emotion-value">{{ (emotions.neutral * 100)|round(1) }}%</span>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if emotions.sad is defined or emotions.angry is defined or emotions.fear is defined or emotions.disgust is defined %}
+                                            {% set unsatisfied = ((emotions.sad|default(0) + emotions.angry|default(0) + emotions.fear|default(0) + emotions.disgust|default(0)) / 4) %}
+                                            <div class="emotion-bar">
+                                                <span class="emotion-label">Unsatisfied</span>
+                                                <div class="progress-container">
+                                                    <div class="progress-bar unsatisfied" style="width: {{ (unsatisfied * 100)|round(1) }}%"></div>
+                                                </div>
+                                                <span class="emotion-value">{{ (unsatisfied * 100)|round(1) }}%</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Performance chart
+            const questionNumbers = [];
+            const answerTimes = [];
+            const correctness = [];
+            
+            {% for item in questions_with_answers %}
+                questionNumbers.push('Q{{ loop.index }}');
+                answerTimes.push({{ item.answer_time|default(0) }});
+                correctness.push({{ 'true' if item.is_correct else 'false' }});
+            {% endfor %}
+            
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(performanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: questionNumbers,
+                    datasets: [{
+                        label: 'Answer Time (seconds)',
+                        data: answerTimes,
+                        backgroundColor: answerTimes.map((time, index) => correctness[index] ? '#4CAF50' : '#F44336'),
+                        borderColor: answerTimes.map((time, index) => correctness[index] ? '#388E3C' : '#D32F2F'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Questions'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    
+                                    const index = context.dataIndex;
+                                    label += context.raw.toFixed(1) + ' seconds';
+                                    label += ' (' + (correctness[index] ? 'Correct' : 'Incorrect') + ')';
+                                    
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Emotion chart if available
+            {% if quiz.use_facial_analysis and emotion_summary %}
+                const emotionCtx = document.getElementById('emotionChart').getContext('2d');
+                
+                // Calculate satisfaction levels based on different emotions
+                let satisfied = {{ emotion_summary.happy|default(0) }};
+                let neutral = {{ emotion_summary.neutral|default(0) }};
+                
+                // Calculate unsatisfied as average of negative emotions
+                let unsatisfied = (
+                    {{ emotion_summary.sad|default(0) }} + 
+                    {{ emotion_summary.angry|default(0) }} + 
+                    {{ emotion_summary.fear|default(0) }} + 
+                    {{ emotion_summary.disgust|default(0) }}
+                ) / 4;
+                
+                new Chart(emotionCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Satisfied', 'Neutral', 'Unsatisfied'],
+                        datasets: [{
+                            data: [
+                                (satisfied * 100).toFixed(1),
+                                (neutral * 100).toFixed(1),
+                                (unsatisfied * 100).toFixed(1)
+                            ],
+                            backgroundColor: ['#4CAF50', '#FFC107', '#F44336'],
+                            borderColor: ['#388E3C', '#FFA000', '#D32F2F'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += context.raw + '%';
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

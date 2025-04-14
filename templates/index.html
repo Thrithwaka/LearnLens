@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preethi AI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="static/css/style.css">
+    <!-- AOS Library -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2A3B4C;
+            --secondary-color: #5E7B94;
+            --accent-color: #47d768;
+            --light-bg: #f9f9f9;
+            --dark-text: #2C3E50;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            color: var(--dark-text);
+            overflow-x: hidden;
+        }
+
+        /* Parallax Effects */
+        .parallax {
+            position: relative;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .parallax-bg {
+            position: absolute;
+            width: 100%;
+            height: 120%;
+            background-size: cover;
+            background-position: center;
+            transform: translateZ(0);
+            will-change: transform;
+            z-index: -1;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .hero-section {
+            padding-top: 120px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .features-section {
+            background: var(--light-bg);
+            padding: 100px 0;
+        }
+
+        .contact-section {
+            background: var(--primary-color);
+            color: white;
+            padding: 80px 0;
+        }
+
+        footer {
+            background: var(--dark-text);
+            color: white;
+            padding: 40px 0;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            border: none;
+            padding: 12px 30px;
+        }
+
+        .feature-card {
+            transition: transform 0.3s ease;
+            border: none;
+            border-radius: 15px;
+            background: white;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="logo fs-3 fw-bold" style="color: var(--accent-color)">Learn Lens</div>
+            <nav>
+                <ul class="d-flex gap-4 list-unstyled mb-0">
+                    <li><a href="#home" class="text-decoration-none text-dark">Home</a></li>
+                    <li><a href="#about" class="text-decoration-none text-dark">About</a></li>
+                    <li><a href="#features" class="text-decoration-none text-dark">Features</a></li>
+                    <li><a href="#contact" class="text-decoration-none text-dark">Contact</a></li>
+                </ul>
+            </nav>
+            <div class="auth-buttons d-flex gap-3">
+                <a href="/login" class="btn"
+                   style="background-color: #4CAF50; border: 2px solid #4CAF50; color: white; text-decoration: none; padding: 0.6rem 1.5rem; font-size: 1rem; border-radius: 50px; transition: all 0.3s;"
+                   onmouseover="this.style.backgroundColor='#388E3C'; this.style.borderColor='#388E3C'; this.style.color='white';"
+                   onmouseout="this.style.backgroundColor='#4CAF50'; this.style.borderColor='#4CAF50'; this.style.color='white';">
+                   Sign In
+                </a>
+                
+                <a href="/register" class="btn"
+                   style="background-color: #4CAF50; border: 2px solid #4CAF50; color: white; text-decoration: none; padding: 0.6rem 1.5rem; font-size: 1rem; border-radius: 50px; transition: all 0.3s;"
+                   onmouseover="this.style.backgroundColor='#388E3C'; this.style.borderColor='#388E3C'; this.style.color='white';"
+                   onmouseout="this.style.backgroundColor='#4CAF50'; this.style.borderColor='#4CAF50'; this.style.color='white';">
+                   Register Now
+                </a>
+              </div>
+            
+        </div>
+    </header>
+
+        <!-- Home Section -->
+        <section id="home" class="hero-section">
+            <div class="hero-text">
+                <h1 id="hero-text">Welcome to Preethi AI!</h1>
+                <p id="hero-description">Adaptive learning with intelligent feedback.</p>
+                <div class="cta-buttons">
+                    <a href="#">Get Started</a>
+                    <a href="#">Learn More</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img id="hero-image" src="/static/images/image1.jpg" alt="AI Education Concept">
+            </div>
+        </section>
+    
+<!-- About Section -->
+<section id="about" class="about-section">
+    <div class="about-hero">
+        <div class="container text-center">
+            <h1 class="display-4 mb-4 animated fadeInUp">About Preethi AI</h1>
+            <p class="lead mb-5 animated fadeInUp" data-aos="fade-up" data-aos-delay="200">Revolutionizing Education Through Artificial Intelligence</p>
+            <a href="/get-started" class="btn btn-primary btn-lg btn-hover animated bounceIn" data-aos="fade-up" data-aos-delay="300">Get Started</a>
+        </div>
+    </div>
+
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-md-6 d-flex justify-content-center align-items-center">
+                <div class="about-card shadow-lg animated fadeIn" data-aos="fade-right">
+                    <div class="card-body text-center">
+                        <i class="fas fa-eye fa-4x text-primary mb-4"></i>
+                        <h3 class="card-title mb-3">Our Vision</h3>
+                        <p class="card-text">To transform education through AI, creating personalized and engaging learning experiences.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex justify-content-center align-items-center">
+                <div class="about-card shadow-lg animated fadeIn" data-aos="fade-left">
+                    <div class="card-body text-center">
+                        <i class="fas fa-bullseye fa-4x text-success mb-4"></i>
+                        <h3 class="card-title mb-3">Our Mission</h3>
+                        <p class="card-text">Empowering educators and students with intelligent tools to enhance teaching, learning, and assessment outcomes.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Section with Parallax Effect -->
+<div class="about-hero">
+    <div class="about-hero-content">
+        <h1 class="animated parallax-text">Intelligent Quiz Analytics Platform</h1>
+        <p class="animated fadeInUp" data-aos="fade-up" data-aos-delay="300">
+            Preethi AI is an innovative AI-powered quiz platform that utilizes advanced face recognition technology
+            to assess student engagement and provide real-time performance analytics.
+        </p>
+    </div>
+    <div class="about-hero-image">
+        <img src="/static/images/analytics.jpg" alt="AI Analytics" class="parallax-img">
+    </div>
+</div>
+
+<!-- Team Story Section -->
+<div class="container py-5">
+    <div class="row g-5 align-items-center">
+        <div class="col-md-6 text-center">
+            <img src="/static/images/team.jpg" alt="Our Team" class="img-fluid rounded-circle shadow-lg animated zoomIn">
+        </div>
+        <div class="col-md-6">
+            <h2 class="mb-4 animated fadeInUp">Our Story as a Team</h2>
+            <p class="lead animated fadeInUp" data-aos="fade-up" data-aos-delay="500">
+                We are a passionate team of five AI enthusiasts dedicated to revolutionizing education.
+                Our combined expertise in machine learning, software engineering, and UI/UX design
+                has enabled us to create Preethi AI – an intelligent quiz system that enhances learning experiences.
+            </p>
+            <button class="btn btn-outline-secondary btn-hover animated pulse" data-aos="fade-up" data-aos-delay="600">
+                Meet the Team
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Parallax Effect Styling */
+.about-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: url('https://images.unsplash.com/photo-1580927752452-89d86da3fa0a?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80') no-repeat center center fixed;
+    background-size: cover;
+    height: 80vh;
+    color: white;
+    text-align: left;
+    padding: 5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.about-hero-content {
+    width: 50%;
+    z-index: 2;
+}
+
+.about-hero h1 {
+    font-size: 3rem;
+    font-weight: bold;
+    font-family: 'Poppins', sans-serif;
+    text-transform: uppercase;
+    animation: fadeInUp 1.5s;
+}
+
+.about-hero-image {
+    width: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.parallax-img {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(0px);
+    transition: transform 0.5s ease-out;
+}
+
+
+
+/* Team Section Styling */
+img.rounded-circle {
+    width: 250px;
+    height: 250px;
+    object-fit: cover;
+}
+
+h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+/* Button Hover */
+.btn-hover:hover {
+    transform: scale(1.1);
+    background-color: #328b41;
+    color: white;
+}
+</style>
+
+</section>
+
+
+    
+<!-- Features Section -->
+<section id="features" class="features-section">
+    <div class="container mx-auto px-4">
+        <div class="text-center" data-aos="fade-up" data-aos-delay="100">
+            <h1 class="text-4xl md:text-5xl font-bold mb-6 gradient-text">
+                Explore Preethi AI's <br>
+                <span class="gradient-text">Unique Features</span>
+            </h1>
+            <p class="text-xl text-gray-600 mb-8">
+                Discover how Preethi AI revolutionizes education with cutting-edge artificial intelligence features.
+            </p>
+        </div>
+
+        <div class="grid">
+            <!-- Feature Cards -->
+            <!-- Feature Card 1 -->
+            <div class="feature-card" data-aos="fade-right" data-aos-delay="200" data-aos-duration="800">
+                <div class="feature-icon">
+                    <i class="fas fa-face-recognition fa-2x text-white"></i>
+                </div>
+                <h3 class="feature-title mb-4">AI-Based Face Recognition Quizzes</h3>
+                <p class="feature-description">
+                    Use AI-powered face recognition technology to conduct secure and interactive quizzes.
+                </p>
+            </div>
+
+            <!-- Feature Card 2 -->
+            <div class="feature-card" data-aos="fade-left" data-aos-delay="300" data-aos-duration="800">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line fa-2x text-white"></i>
+                </div>
+                <h3 class="feature-title mb-4">Performance Analytics</h3>
+                <p class="feature-description">
+                    Gain deep insights into student performance with real-time analytics and progress tracking.
+                </p>
+            </div>
+
+            <!-- Feature Card 3 -->
+            <div class="feature-card" data-aos="fade-right" data-aos-delay="400" data-aos-duration="800">
+                <div class="feature-icon">
+                    <i class="fas fa-video fa-2x text-white"></i>
+                </div>
+                <h3 class="feature-title mb-4">Camera-Based Monitoring</h3>
+                <p class="feature-description">
+                    Enable continuous classroom monitoring through AI-powered camera surveillance.
+                </p>
+            </div>
+
+            <!-- Feature Card 4 -->
+            <div class="feature-card" data-aos="fade-left" data-aos-delay="500" data-aos-duration="800">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-bar fa-2x text-white"></i>
+                </div>
+                <h3 class="feature-title mb-4">Real-Time Reports</h3>
+                <p class="feature-description">
+                    Generate instant reports and gain valuable insights into educational outcomes.
+                </p>
+            </div>
+
+            <!-- Feature Card 5 -->
+            <div class="feature-card" data-aos="fade-right" data-aos-delay="600" data-aos-duration="800">
+                <div class="feature-icon">
+                    <i class="fas fa-random fa-2x text-white"></i>
+                </div>
+                <h3 class="feature-title mb-4">Dynamic Question Shuffling</h3>
+                <p class="feature-description">
+                    Automatically shuffle questions to ensure uniqueness in every assessment.
+                </p>
+            </div>
+
+            <!-- Feature Card 6 -->
+            <div class="feature-card" data-aos="fade-left" data-aos-delay="700" data-aos-duration="800">
+                <div class="feature-icon">
+                    <i class="fas fa-cogs fa-2x text-white"></i>
+                </div>
+                <h3 class="feature-title mb-4">Advanced Settings</h3>
+                <p class="feature-description">
+                    Customize quiz settings, monitoring parameters, and analytics preferences according to your needs.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+    <!-- Existing Sections (Home, About, Features) Remain Same -->
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 text-center">
+                    <h2 class="mb-4">Contact Us</h2>
+                    <p class="mb-5">Have questions? Get in touch with our team</p>
+                    
+                    <form class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Your Name">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="email" class="form-control" placeholder="Your Email">
+                        </div>
+                        <div class="col-12">
+                            <textarea class="form-control" rows="4" placeholder="Your Message"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-light">Send Message</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <h5>About Preethi AI</h5>
+                    <p>Revolutionizing education through AI-powered solutions</p>
+                </div>
+                <div class="col-md-2">
+                    <h5>Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#home" class="text-white text-decoration-none">Home</a></li>
+                        <li><a href="#about" class="text-white text-decoration-none">About</a></li>
+                        <li><a href="#features" class="text-white text-decoration-none">Features</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Contact Info</h5>
+                    <ul class="list-unstyled">
+                        <li>Email: info@preethiai.com</li>
+                        <li>Phone: (555) 123-4567</li>
+                        <li>Address: 123 AI Street, Tech City</li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Follow Us</h5>
+                    <div class="social-links d-flex gap-3">
+                        <a href="#" class="text-white"><i class="fab fa-facebook"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-white"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr class="mt-5">
+            <p class="text-center mb-0">&copy; 2023 Preethi AI. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        // Parallax Effect
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallaxElements = document.querySelectorAll('.parallax-bg');
+            
+            parallaxElements.forEach(element => {
+                const speed = 0.5;
+                element.style.transform = `translateY(${scrolled * speed}px)`;
+            });
+        });
+
+       const heroTexts = [
+            "Welcome to Preethi AI!",
+            "Empowering Learning with Intelligence",
+            "Intelligent Quiz Analytics for Everyone",
+            "Where AI Meets Education"
+        ];
+
+        const heroDescriptions = [
+            "Adaptive learning with intelligent feedback.",
+            "Personalized educational experiences",
+            "AI-powered learning solutions",
+            "Smart learning for better outcomes"
+        ];
+
+        const heroImages = [
+            "/static/images/image1.jpg",
+            "/static/images/image2.jpg",
+            "/static/images/image3.jpg"
+        ];
+
+        let index = 0;
+        const heroTextElement = document.getElementById("hero-text");
+        const heroDescElement = document.getElementById("hero-description");
+        const heroImageElement = document.getElementById("hero-image");
+
+        function changeHeroContent() {
+            index = (index + 1) % heroTexts.length;
+            heroImageElement.style.opacity = 0;
+            
+            setTimeout(() => {
+                heroTextElement.textContent = heroTexts[index];
+                heroDescElement.textContent = heroDescriptions[index];
+                heroImageElement.src = heroImages[index % heroImages.length];
+                heroImageElement.style.opacity = 1;
+            }, 500);
+        }
+
+        changeHeroContent();
+        setInterval(changeHeroContent, 5000);
+         // Animation script from 1st code
+
+        function changeHeroContent() {
+            index = (index + 1) % heroTexts.length;
+            heroImageElement.style.opacity = 0;
+            
+            setTimeout(() => {
+                heroTextElement.textContent = heroTexts[index];
+                heroDescElement.textContent = heroDescriptions[index];
+                heroImageElement.src = heroImages[index % heroImages.length];
+                heroImageElement.style.opacity = 1;
+            }, 500);
+        }
+        /* Parallax Effect */
+window.addEventListener("scroll", function() {
+    let scrollPosition = window.scrollY;
+    document.querySelector(".parallax-img").style.transform = `translateY(${scrollPosition * 0.3}px)`;
+});
+
+        AOS.init({ once: true });
+        changeHeroContent();
+        setInterval(changeHeroContent, 5000);
+    </script>
+</body>
+</html>

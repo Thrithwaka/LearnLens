@@ -1,0 +1,314 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="back-nav">
+            <a href="{{ url_for('dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        
+        <div class="profile-page">
+            <div class="page-header">
+                <h1>Your Profile</h1>
+                <p class="subtitle">Update your personal information</p>
+            </div>
+            
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-message {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+            </div>
+            
+            <div class="profile-container">
+                <div class="profile-sidebar">
+                    <div class="profile-image-container">
+                        <img src="{{ url_for('static', filename='uploads/profiles/' + current_user.profile_pic) }}" 
+                             alt="Profile Picture" class="profile-image" id="profile-preview">
+                        <div class="edit-overlay" id="upload-trigger">
+                            <i class="fas fa-camera"></i>
+                            <span>Change</span>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-info">
+                        <h2 class="profile-name">{{ current_user.first_name }} {{ current_user.last_name }}</h2>
+                        <p class="profile-username">@{{ current_user.username }}</p>
+                        <p class="profile-id">ID: {{ current_user.unique_id }}</p>
+                    </div>
+                    
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">{{ current_user.created_quizzes|length }}</span>
+                            <span class="stat-label">Quizzes Created</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">{{ current_user.quiz_attempts|length }}</span>
+                            <span class="stat-label">Quizzes Taken</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-form-container">
+                    <h2 class="section-title">Edit Profile</h2>
+                    
+                    <form action="{{ url_for('update_profile') }}" method="post" enctype="multipart/form-data" class="profile-form">
+                        <input type="file" id="profile_pic" name="profile_pic" accept="image/*" class="hidden">
+                        
+                        <div class="form-section">
+                            <h3 class="subsection-title">Personal Information</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="first_name">First Name</label>
+                                    <input type="text" id="first_name" name="first_name" value="{{ current_user.first_name }}">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="last_name">Last Name</label>
+                                    <input type="text" id="last_name" name="last_name" value="{{ current_user.last_name }}">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" value="{{ current_user.email }}">
+                            </div>
+                        </div>
+                        
+                        <div class="form-section">
+                            <h3 class="subsection-title">Change Password</h3>
+                            
+                            <div class="form-group">
+                                <label for="current_password">Current Password</label>
+                                <input type="password" id="current_password" name="current_password">
+                                <span class="form-hint">Leave blank if you don't want to change your password</span>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="new_password">New Password</label>
+                                    <input type="password" id="new_password" name="new_password">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="confirm_password">Confirm New Password</label>
+                                    <input type="password" id="confirm_password" name="confirm_password">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="primary-btn">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .profile-page {
+            margin-bottom: 3rem;
+        }
+        
+        .profile-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .profile-sidebar {
+            flex: 1;
+            min-width: 250px;
+            max-width: 300px;
+            background-color: var(--white);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .profile-image-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+        
+        .profile-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .edit-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: var(--white);
+            padding: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: var(--transition);
+        }
+        
+        .profile-image-container:hover .edit-overlay {
+            opacity: 1;
+        }
+        
+        .profile-info {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .profile-name {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .profile-username {
+            color: var(--gray);
+            margin-bottom: 0.25rem;
+        }
+        
+        .profile-id {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .profile-stats {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--light-gray);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .profile-form-container {
+            flex: 2;
+            min-width: 300px;
+            background-color: var(--white);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .subsection-title {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .form-section {
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 992px) {
+            .profile-container {
+                flex-direction: column;
+            }
+            
+            .profile-sidebar {
+                max-width: none;
+            }
+        }
+    </style>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadTrigger = document.getElementById('upload-trigger');
+            const fileInput = document.getElementById('profile_pic');
+            const profilePreview = document.getElementById('profile-preview');
+            const passwordForm = document.getElementById('password-form');
+            const newPasswordInput = document.getElementById('new_password');
+            const confirmPasswordInput = document.getElementById('confirm_password');
+            const currentPasswordInput = document.getElementById('current_password');
+            
+            // Handle profile picture upload
+            uploadTrigger.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        profilePreview.src = e.target.result;
+                    };
+                    
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            // Handle form submission
+            document.querySelector('.profile-form').addEventListener('submit', function(event) {
+                // Validate password fields if any password field is filled
+                if (newPasswordInput.value || confirmPasswordInput.value || currentPasswordInput.value) {
+                    // Check if current password is provided
+                    if (!currentPasswordInput.value) {
+                        alert('Please enter your current password to change your password');
+                        event.preventDefault();
+                        return;
+                    }
+                    
+                    // Check if new password and confirm password match
+                    if (newPasswordInput.value !== confirmPasswordInput.value) {
+                        alert('New passwords do not match');
+                        event.preventDefault();
+                        return;
+                    }
+                    
+                    // Check if new password is at least 6 characters
+                    if (newPasswordInput.value.length < 6) {
+                        alert('New password must be at least 6 characters long');
+                        event.preventDefault();
+                        return;
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

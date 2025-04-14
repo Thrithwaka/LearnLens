@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }} - Quiz Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quiz_d.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="back-nav">
+            <a href="{{ url_for('dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        
+        <div class="quiz-detail-header">
+            <h1 class="quiz-title">{{ quiz.title }}</h1>
+            
+            <div class="quiz-meta">
+                <div class="quiz-status">
+                    {% if quiz.status == 'active' %}
+                        <span class="status-badge active">Active</span>
+                    {% elif quiz.status == 'scheduled' %}
+                        <span class="status-badge scheduled">Scheduled</span>
+                    {% elif quiz.status == 'ended' %}
+                        <span class="status-badge ended">Ended</span>
+                    {% else %}
+                        <span class="status-badge draft">Draft</span>
+                    {% endif %}
+                </div>
+                
+                <div class="quiz-type">
+                    <span class="type-label">Type:</span>
+                    <span class="type-value">{{ quiz.quiz_type|title }}</span>
+                </div>
+                
+                <div class="quiz-duration">
+                    <span class="duration-label">Duration:</span>
+                    <span class="duration-value">{{ quiz.duration }} minutes</span>
+                </div>
+                
+                {% if quiz.status == 'active' or quiz.status == 'scheduled' %}
+                    <div class="quiz-time">
+                        <span class="time-label">{{ quiz.get_time_status_display() }}</span>
+                    </div>
+                {% endif %}
+                
+                {% if quiz.use_facial_analysis %}
+                    <div class="facial-analysis-badge">
+                        <i class="fas fa-smile"></i> Facial Analysis Enabled
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quiz Control Section (for active quizzes) -->
+        {% if quiz.status == 'scheduled' and quiz.quiz_type == 'live' %}
+            <div class="quiz-controls">
+                <button id="start-quiz-btn" class="primary-btn"
+                        data-url="{{ url_for('start_quiz', quiz_id=quiz.id) }}"
+                        data-csrf="{{ csrf_token }}">
+                    <i class="fas fa-play"></i> Start Quiz
+                </button>
+                <p class="control-info">Starting the quiz will allow participants to join and answer questions.</p>
+            </div>
+        {% elif quiz.status == 'active' %}
+            <div class="quiz-controls">
+                <button id="end-quiz-btn" class="danger-btn"
+                        data-url="{{ url_for('end_quiz', quiz_id=quiz.id) }}"
+                        data-csrf="{{ csrf_token }}">
+                    <i class="fas fa-stop"></i> End Quiz
+                </button>
+                <p class="control-info">Ending the quiz will prevent new participants from joining and display results.</p>
+            </div>
+        {% endif %}
+        
+        <!-- Quiz Access Information -->
+        {% if quiz.status == 'scheduled' or quiz.status == 'active' %}
+            <div class="access-info">
+                <h2 class="section-subtitle">Share with Participants</h2>
+                
+                <div class="access-code-section">
+                    <div class="share-link">
+                        <input type="text" value="{{ quiz.share_link }}" id="share-link" readonly>
+                        <button id="copy-link-btn" class="copy-btn" data-clipboard-target="#share-link">
+                            <i class="fas fa-copy"></i> Copy Link
+                        </button>
+                    </div>
+                    
+                    <div class="access-code">
+                        <span class="code-label">Access Code:</span>
+                        <span class="code-value">{{ quiz.access_code }}</span>
+                    </div>
+                    
+                    <div class="qr-code">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ quiz.share_link|urlencode }}" alt="QR Code">
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Quiz Content Section -->
+        <div class="quiz-content">
+            <h2 class="section-subtitle">Quiz Content</h2>
+            
+            <div class="quiz-description">
+                <p>{{ quiz.description }}</p>
+            </div>
+            
+            <div class="question-list">
+                <h3>Questions ({{ quiz.questions|length }})</h3>
+                
+                {% if quiz.questions %}
+                    <div class="questions-container">
+                        {% for question in quiz.questions|sort(attribute='order') %}
+                            <div class="question-card">
+                                <div class="question-header">
+                                    <span class="question-number">Q{{ loop.index }}</span>
+                                    <span class="question-time">{{ question.time_limit }} seconds</span>
+                                </div>
+                                
+                                <div class="question-content">
+                                    <p class="question-text">{{ question.text }}</p>
+                                    
+                                    {% if question.image %}
+                                        <div class="question-image">
+                                            <img src="{{ url_for('static', filename='uploads/questions/' + question.image) }}" alt="Question Image">
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="question-options">
+                                    <div class="option {% if question.correct_answer == question.option1 %}correct{% endif %}">
+                                        <span class="option-marker">A</span>
+                                        <span class="option-text">{{ question.option1 }}</span>
+                                    </div>
+                                    <div class="option {% if question.correct_answer == question.option2 %}correct{% endif %}">
+                                        <span class="option-marker">B</span>
+                                        <span class="option-text">{{ question.option2 }}</span>
+                                    </div>
+                                    <div class="option {% if question.correct_answer == question.option3 %}correct{% endif %}">
+                                        <span class="option-marker">C</span>
+                                        <span class="option-text">{{ question.option3 }}</span>
+                                    </div>
+                                    <div class="option {% if question.correct_answer == question.option4 %}correct{% endif %}">
+                                        <span class="option-marker">D</span>
+                                        <span class="option-text">{{ question.option4 }}</span>
+                                    </div>
+                                </div>
+                                
+                                {% if quiz.status == 'draft' or quiz.status == 'scheduled' %}
+                                    <div class="question-actions">
+                                        <a href="{{ url_for('edit_quiz', quiz_id=quiz.id) }}?edit_question={{ question.id }}" class="action-link">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                        <form action="{{ url_for('edit_quiz', quiz_id=quiz.id) }}" method="post" class="inline-form">
+                                            <input type="hidden" name="action" value="delete_question">
+                                            <input type="hidden" name="question_id" value="{{ question.id }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="action-link delete" onclick="return confirm('Are you sure you want to delete this question?')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>No questions added yet.</p>
+                        {% if quiz.status == 'draft' %}
+                            <a href="{{ url_for('edit_quiz', quiz_id=quiz.id) }}" class="cta-button">Add Questions</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quiz Results Section (for ended quizzes) -->
+        {% if quiz.status == 'ended' %}
+            {% set results = quiz.calculate_results() %}
+            <div class="quiz-results">
+                <h2 class="section-subtitle">Quiz Results</h2>
+                
+                <div class="results-summary">
+                    <div class="summary-card">
+                        <div class="summary-value">{{ results.total_participants }}</div>
+                        <div class="summary-label">Participants</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value">{{ results.average_score|round(1) }}%</div>
+                        <div class="summary-label">Average Score</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value">{{ results.highest_score|round(1) }}%</div>
+                        <div class="summary-label">Highest Score</div>
+                    </div>
+                </div>
+                
+                <div class="results-charts">
+                    <div class="chart-container">
+                        <h3>Question Performance</h3>
+                        <canvas id="questionChart"></canvas>
+                    </div>
+                    
+                    {% if quiz.use_facial_analysis and results.emotion_data %}
+                        <div class="chart-container">
+                            <h3>Emotion Analysis</h3>
+                            <canvas id="emotionChart"></canvas>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="detailed-results">
+                    <h3>Question Details</h3>
+                    
+                    <div class="question-results-list">
+                        {% for stat in results.question_stats %}
+                            <div class="question-result-card">
+                                <div class="question-info">
+                                    <span class="question-number">Q{{ loop.index }}</span>
+                                    <p class="question-text">{{ stat.text }}</p>
+                                </div>
+                                
+                                <div class="result-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-value">{{ (stat.correct_answers / (stat.correct_answers + stat.incorrect_answers) * 100)|round(1) if (stat.correct_answers + stat.incorrect_answers) > 0 else 0 }}%</span>
+                                        <span class="stat-label">Correct Answers</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-value">{{ stat.average_time|round(1) }}s</span>
+                                        <span class="stat-label">Avg. Response Time</span>
+                                    </div>
+                                </div>
+                                
+                                {% if quiz.use_facial_analysis and results.emotion_data.get(stat.id|string) %}
+                                    <div class="emotion-summary">
+                                        <h4>Emotion Analysis</h4>
+                                        <div class="emotion-bars">
+                                            {% set emotions_data = results.emotion_data.get(stat.id|string, {}) %}
+                                            
+                                            {% if emotions_data.get('happy') is defined %}
+                                                {% set satisfaction_level = emotions_data.get('happy', 0) %}
+                                                <div class="emotion-bar">
+                                                    <span class="emotion-label">Satisfied</span>
+                                                    <div class="progress-container">
+                                                        <div class="progress-bar satisfied" style="width: '{{ satisfaction_level * 100 }}%'"></div>
+                                                    </div>
+                                                    <span class="emotion-value">{{ (satisfaction_level * 100)|round(1) }}%</span>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            {% if emotions_data.get('neutral') is defined %}
+                                                {% set neutral_level = emotions_data.get('neutral', 0) %}
+                                                <div class="emotion-bar">
+                                                    <span class="emotion-label">Neutral</span>
+                                                    <div class="progress-container">
+                                                        <div class="progress-bar neutral" style="width: '{{ neutral_level * 100 }}%'"></div>
+                                                    </div>
+                                                    <span class="emotion-value">{{ (neutral_level * 100)|round(1) }}%</span>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            {% set unsatisfied_level = (emotions_data.get('sad', 0) + emotions_data.get('angry', 0) + emotions_data.get('fear', 0) + emotions_data.get('disgust', 0)) / 4 %}
+                                            <div class="emotion-bar">
+                                                <span class="emotion-label">Unsatisfied</span>
+                                                <div class="progress-container">
+                                                    <div class="progress-bar unsatisfied" style="width: '{{ unsatisfied_level * 100 }}%'"></div>
+                                                </div>
+                                                <span class="emotion-value">{{ (unsatisfied_level * 100)|round(1) }}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
+    
+    {% if quiz.status == 'ended' %}
+        {% set results = quiz.calculate_results() %}
+        <script>
+            // Create global object to store quiz data
+            window.quizData = JSON.parse('{\
+                "questionStats": {{ results.question_stats|tojson|safe }},\
+                "emotionData": {% if quiz.use_facial_analysis and results.emotion_data %}\
+                    {{ results.emotion_data|tojson|safe }}\
+                {% else %}\
+                    null\
+                {% endif %}\
+            }');
+        </script>
+    {% endif %}
+    
+    <!-- Include the external JavaScript file -->
+    <script src="{{ url_for('static', filename='js/quiz_details.js') }}"></script>
+</body>
+</html>

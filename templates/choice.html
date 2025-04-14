@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Who Are You?</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f1f9f3;
+      color: #333;
+      overflow-x: hidden;
+    }
+
+    .container {
+      text-align: center;
+      padding: 40px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .welcome-text h1 {
+      font-size: 3rem;
+      color: #4CAF50;
+      margin-bottom: 20px;
+      animation: fadeIn 1.5s ease-out;
+    }
+
+    .welcome-text p {
+      font-size: 1.2rem;
+      color: #555;
+      animation: slideUp 1s ease-out;
+    }
+
+    .choice-container {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .choice-link {
+      text-decoration: none;
+    }
+
+    .choice {
+      width: 200px;
+      height: 200px;
+      background-color: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease-in-out;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .choice::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, #4CAF5055, #ffffff00);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .choice:hover::before {
+      opacity: 0.1;
+    }
+
+    .choice:hover {
+      transform: translateY(-10px) scale(1.05);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .choice img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      margin-bottom: 10px;
+      transition: transform 0.3s ease;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .choice p {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #4CAF50;
+      position: relative;
+      z-index: 1;
+    }
+
+    .choice:active {
+      transform: scale(0.95);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+      .choice-container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .welcome-text h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="welcome-text">
+      <h1>What do you want to do?</h1>
+      <p>Select your role to begin the journey</p>
+    </div>
+      
+
+    <div class="choice-container">
+
+      <a href="/dashboard" class="choice-link">
+        <div class="choice" id="dashboard">
+          <img src="/static/images/dashboard.png" alt="Dashboard Icon">
+          <p>Dashboard</p>
+        </div>
+      </a>
+
+
+
+      <a href="{{ url_for('create_quiz') }}" class="choice-link">
+        <div class="choice" id="creator">
+          <img src="/static/images/writer.png" alt="Creator Icon">
+          <p>Questions create</p>
+        </div>
+      </a>
+
+      <a href="{{ url_for('join_quiz') }}" class="choice-link">
+        <div class="choice" id="doer">
+          <img src="/static/images/group.png" alt="Doer Icon">
+          <p>Join Game</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

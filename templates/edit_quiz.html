@@ -1,0 +1,433 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Quiz - {{ quiz.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/edite.css') }}">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="back-nav">
+            <a href="{{ url_for('quiz_detail', quiz_id=quiz.id) }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Quiz
+            </a>
+        </div>
+        
+        <div class="page-header">
+            <h1>Edit Quiz: {{ quiz.title }}</h1>
+            <div class="quiz-status">
+                {% if quiz.status == 'draft' %}
+                    <span class="status-badge draft">Draft</span>
+                {% elif quiz.status == 'scheduled' %}
+                    <span class="status-badge scheduled">Scheduled</span>
+                    <span class="time-info">{{ quiz.get_time_status_display() }}</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="edit-quiz-tabs">
+            <button class="tab-btn active" data-tab="details">Quiz Details</button>
+            <button class="tab-btn" data-tab="questions">Questions ({{ quiz.questions|length }})</button>
+            <button class="tab-btn" data-tab="finalize">Finalize</button>
+        </div>
+        
+        <div class="edit-quiz-content">
+            <!-- Quiz Details Tab -->
+            <div class="tab-content active" id="details-tab">
+                <form action="{{ url_for('edit_quiz', quiz_id=quiz.id) }}" method="post" class="edit-form">
+                    <input type="hidden" name="action" value="update_details">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="title">Quiz Title <span class="required">*</span></label>
+                            <input type="text" id="title" name="title" value="{{ quiz.title }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" rows="4">{{ quiz.description }}</textarea>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="duration">Duration (minutes) <span class="required">*</span></label>
+                                <input type="number" id="duration" name="duration" min="1" max="120" value="{{ quiz.duration }}" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="quiz_type">Quiz Type</label>
+                                <input type="text" value="{{ quiz.quiz_type|title }}" readonly class="readonly-input">
+                                <span class="form-hint">Quiz type cannot be changed after creation.</span>
+                            </div>
+                        </div>
+                        
+                        {% if quiz.quiz_type == 'scheduled' %}
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="scheduled_date">Date <span class="required">*</span></label>
+                                    <input type="date" id="scheduled_date" name="scheduled_date" value="{{ quiz.scheduled_time.strftime('%Y-%m-%d') if quiz.scheduled_time else '' }}" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="scheduled_time">Time <span class="required">*</span></label>
+                                    <input type="time" id="scheduled_time" name="scheduled_time" value="{{ quiz.scheduled_time.strftime('%H:%M') if quiz.scheduled_time else '' }}" required>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="use_facial_analysis" name="use_facial_analysis" {% if quiz.use_facial_analysis %}checked{% endif %}>
+                            <label for="use_facial_analysis">Enable facial emotion analysis</label>
+                            <span class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Participants will need to enable their camera for emotion tracking.
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="primary-btn">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Questions Tab -->
+            <div class="tab-content" id="questions-tab">
+                <div class="questions-container">
+                    <!-- Existing Questions -->
+                    {% if quiz.questions %}
+                        <div class="existing-questions">
+                            <h3>Existing Questions</h3>
+                            
+                            <div class="question-list">
+                                {% for question in quiz.questions|sort(attribute='order') %}
+                                    <div class="question-item" data-question-id="{{ question.id }}">
+                                        <div class="question-header">
+                                            <span class="question-number">Q{{ loop.index }}</span>
+                                            <div class="question-actions">
+                                                <button type="button" class="edit-question-btn" data-question-id="{{ question.id }}">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <form action="{{ url_for('edit_quiz', quiz_id=quiz.id) }}" method="post" class="inline-form">
+                                                    <input type="hidden" name="action" value="delete_question">
+                                                    <input type="hidden" name="question_id" value="{{ question.id }}">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                    <button type="submit" class="delete-question-btn" onclick="return confirm('Are you sure you want to delete this question?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                                <button type="button" class="reorder-question-btn">
+                                                    <i class="fas fa-arrows-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="question-preview">
+                                            <p class="question-text">{{ question.text }}</p>
+                                            <div class="question-meta">
+                                                <span class="time-limit">{{ question.time_limit }} seconds</span>
+                                                {% if question.image %}
+                                                    <span class="has-image"><i class="fas fa-image"></i> Has image</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="empty-questions">
+                            <p>No questions added yet. Start adding questions below.</p>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Add/Edit Question Form -->
+                    <div class="question-form-container">
+                        <h3 id="question-form-title">Add New Question</h3>
+                        
+                        <form action="{{ url_for('edit_quiz', quiz_id=quiz.id) }}" method="post" enctype="multipart/form-data" class="question-form">
+                            <input type="hidden" name="action" value="add_question" id="question-action">
+                            <input type="hidden" name="question_id" value="" id="question-id">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            
+                            <div class="form-group">
+                                <label for="question_text">Question Text <span class="required">*</span></label>
+                                <textarea id="question_text" name="question_text" rows="3" required></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="question_image">Question Image (optional)</label>
+                                <input type="file" id="question_image" name="question_image" accept="image/*">
+                                <div id="image-preview-container" class="image-preview hidden">
+                                    <img id="image-preview" src="" alt="Image Preview">
+                                    <button type="button" id="remove-image" class="remove-image-btn">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="time_limit">Time Limit (seconds) <span class="required">*</span></label>
+                                    <input type="number" id="time_limit" name="time_limit" min="5" max="300" value="30" required>
+                                </div>
+                            </div>
+                            
+                            <div class="answer-options">
+                                <h4>Answer Options</h4>
+                                
+                                <div class="form-group">
+                                    <label for="option1">Option A <span class="required">*</span></label>
+                                    <input type="text" id="option1" name="option1" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="option2">Option B <span class="required">*</span></label>
+                                    <input type="text" id="option2" name="option2" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="option3">Option C <span class="required">*</span></label>
+                                    <input type="text" id="option3" name="option3" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="option4">Option D <span class="required">*</span></label>
+                                    <input type="text" id="option4" name="option4" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="correct_answer">Correct Answer <span class="required">*</span></label>
+                                    <select id="correct_answer" name="correct_answer" required>
+                                        <option value="" selected disabled>Select the correct answer</option>
+                                        <option value="option1">Option A</option>
+                                        <option value="option2">Option B</option>
+                                        <option value="option3">Option C</option>
+                                        <option value="option4">Option D</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="primary-btn">Save Question</button>
+                                <button type="button" id="cancel-edit" class="secondary-btn hidden">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Finalize Tab -->
+            <div class="tab-content" id="finalize-tab">
+                <div class="finalize-content">
+                    <h3>Ready to Finalize Quiz?</h3>
+                    
+                    <div class="quiz-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">Quiz Title:</span>
+                            <span class="summary-value">{{ quiz.title }}</span>
+                        </div>
+                        
+                        <div class="summary-item">
+                            <span class="summary-label">Duration:</span>
+                            <span class="summary-value">{{ quiz.duration }} minutes</span>
+                        </div>
+                        
+                        <div class="summary-item">
+                            <span class="summary-label">Quiz Type:</span>
+                            <span class="summary-value">{{ quiz.quiz_type|title }}</span>
+                        </div>
+                        
+                        {% if quiz.quiz_type == 'scheduled' and quiz.scheduled_time %}
+                            <div class="summary-item">
+                                <span class="summary-label">Scheduled Time:</span>
+                                <span class="summary-value">{{ quiz.scheduled_time.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="summary-item">
+                            <span class="summary-label">Questions:</span>
+                            <span class="summary-value">{{ quiz.questions|length }}</span>
+                        </div>
+                        
+                        <div class="summary-item">
+                            <span class="summary-label">Facial Analysis:</span>
+                            <span class="summary-value">{{ 'Enabled' if quiz.use_facial_analysis else 'Disabled' }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if quiz.questions|length == 0 %}
+                        <div class="warning-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            You need to add at least one question before finalizing the quiz.
+                        </div>
+                    {% endif %}
+                    
+                    <div class="finalize-actions">
+                        <form action="{{ url_for('edit_quiz', quiz_id=quiz.id) }}" method="post">
+                            <input type="hidden" name="action" value="finalize_quiz">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            
+                            <button type="submit" class="primary-btn" {% if quiz.questions|length == 0 %}disabled{% endif %}>
+                                <i class="fas fa-check-circle"></i> Finalize Quiz
+                            </button>
+                        </form>
+                        
+                        <p class="finalize-note">
+                            <i class="fas fa-info-circle"></i>
+                            Once finalized, the quiz will be available for participants according to its scheduled time.
+                            For live quizzes, you'll need to manually start the session.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding content
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // Question image preview
+            const imageInput = document.getElementById('question_image');
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+            const imagePreview = document.getElementById('image-preview');
+            const removeImageBtn = document.getElementById('remove-image');
+            
+            imageInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        imagePreviewContainer.classList.remove('hidden');
+                    };
+                    
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+            
+            removeImageBtn.addEventListener('click', function() {
+                imageInput.value = '';
+                imagePreviewContainer.classList.add('hidden');
+            });
+            
+            // Edit question functionality
+            const editButtons = document.querySelectorAll('.edit-question-btn');
+            const questionForm = document.querySelector('.question-form');
+            const questionAction = document.getElementById('question-action');
+            const questionId = document.getElementById('question-id');
+            const questionFormTitle = document.getElementById('question-form-title');
+            const cancelEditBtn = document.getElementById('cancel-edit');
+            
+            editButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const questionIdToEdit = this.getAttribute('data-question-id');
+                    
+                    // Set form to update mode
+                    questionAction.value = 'update_question';
+                    questionId.value = questionIdToEdit;
+                    questionFormTitle.textContent = 'Edit Question';
+                    cancelEditBtn.classList.remove('hidden');
+                    
+                    // Fetch question data and populate form
+                    fetch(`/api/question/${questionIdToEdit}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('question_text').value = data.text;
+                            document.getElementById('time_limit').value = data.time_limit;
+                            document.getElementById('option1').value = data.option1;
+                            document.getElementById('option2').value = data.option2;
+                            document.getElementById('option3').value = data.option3;
+                            document.getElementById('option4').value = data.option4;
+                            
+                            // Set correct answer
+                            const correctAnswer = document.getElementById('correct_answer');
+                            if (data.correct_answer === data.option1) {
+                                correctAnswer.value = 'option1';
+                            } else if (data.correct_answer === data.option2) {
+                                correctAnswer.value = 'option2';
+                            } else if (data.correct_answer === data.option3) {
+                                correctAnswer.value = 'option3';
+                            } else if (data.correct_answer === data.option4) {
+                                correctAnswer.value = 'option4';
+                            }
+                            
+                            // Show image preview if exists
+                            if (data.image) {
+                                imagePreview.src = `/static/images/questions/${data.image}`;
+                                imagePreviewContainer.classList.remove('hidden');
+                            } else {
+                                imagePreviewContainer.classList.add('hidden');
+                            }
+                            
+                            // Scroll to form
+                            questionForm.scrollIntoView({ behavior: 'smooth' });
+                        })
+                        .catch(error => {
+                            console.error('Error fetching question data:', error);
+                            alert('Failed to load question data. Please try again.');
+                        });
+                });
+            });
+            
+            // Cancel edit button
+            cancelEditBtn.addEventListener('click', function() {
+                // Reset form to add mode
+                questionAction.value = 'add_question';
+                questionId.value = '';
+                questionFormTitle.textContent = 'Add New Question';
+                cancelEditBtn.classList.add('hidden');
+                
+                // Clear form fields
+                questionForm.reset();
+                imagePreviewContainer.classList.add('hidden');
+            });
+            
+            // Check if there's a question_id in URL to edit (from query parameter)
+            const urlParams = new URLSearchParams(window.location.search);
+            const editQuestionId = urlParams.get('edit_question');
+            if (editQuestionId) {
+                const editButton = document.querySelector(`.edit-question-btn[data-question-id="${editQuestionId}"]`);
+                if (editButton) {
+                    // Activate questions tab
+                    const questionsTab = document.querySelector('.tab-btn[data-tab="questions"]');
+                    questionsTab.click();
+                    
+                    // Trigger edit button click
+                    setTimeout(() => {
+                        editButton.click();
+                    }, 300);
+                }
+            }
+            
+            // Date validation for scheduled quizzes
+            const dateInput = document.getElementById('scheduled_date');
+            if (dateInput) {
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                dateInput.min = todayStr;
+            }
+        });
+    </script>
+</body>
+</html>

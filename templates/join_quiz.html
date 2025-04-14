@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Quiz</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/join_q.css') }}">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="back-nav">
+            <a href="{{ url_for('dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        
+        <div class="join-quiz-container">
+            <div class="join-header">
+                <h1>Join a Quiz</h1>
+                <p class="subtitle">Enter the quiz access code provided by the quiz creator</p>
+            </div>
+            
+            <div class="join-form">
+                <form action="{{ url_for('join_quiz') }}" method="post">
+                    <div class="form-group">
+                        <label for="access_code">Access Code</label>
+                        <input type="text" id="access_code" name="access_code" placeholder="Enter 6-digit code" maxlength="6" required>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="primary-btn">
+                            <i class="fas fa-sign-in-alt"></i> Join Quiz
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="join-info">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Quiz Guidelines</h3>
+                        <ul>
+                            <li>Make sure you have a stable internet connection</li>
+                            <li>If the quiz uses facial analysis, you'll need to enable your camera</li>
+                            <li>Each question has a time limit - answer before time runs out</li>
+                            <li>You can only take each quiz once</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

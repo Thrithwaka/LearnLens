@@ -1,0 +1,125 @@
+/* Quiz Attempt Details Styles */
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    border: none;
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e3e6f0;
+    padding: 1rem 1.25rem;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.table-bordered {
+    border: 1px solid #e3e6f0;
+}
+
+.table-bordered th, 
+.table-bordered td {
+    border: 1px solid #e3e6f0;
+    padding: 0.75rem;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.options {
+    margin-top: 10px;
+}
+
+.option {
+    border-radius: 4px;
+    margin-bottom: 5px;
+    padding: 8px 12px;
+}
+
+.option.bg-success {
+    background-color: rgba(40, 167, 69, 0.2) !important;
+    border-left: 4px solid #28a745;
+}
+
+.option.bg-danger {
+    background-color: rgba(220, 53, 69, 0.2) !important;
+    border-left: 4px solid #dc3545;
+}
+
+.badge {
+    font-size: 85%;
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+    border-radius: 0.25rem;
+}
+
+.img-thumbnail {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Emotion chart container */
+#emotionChart, 
+[id^="emotionChart"] {
+    margin-bottom: 1rem;
+}
+
+.progress {
+    height: 0.8rem;
+    border-radius: 0.2rem;
+}
+
+.progress-bar {
+    text-align: center;
+    font-size: 0.7rem;
+    line-height: 0.8rem;
+    font-weight: 600;
+}
+
+.btn-info {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+}
+
+.modal-content {
+    border-radius: 0.5rem;
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    border-bottom: 1px solid #e3e6f0;
+    background-color: #f8f9fa;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+}

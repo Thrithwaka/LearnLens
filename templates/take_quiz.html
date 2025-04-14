@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }} - Taking Quiz</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quize_T.css') }}">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/deepface_emotion.js') }}"></script>
+    <style>
+        /* Additional styles for emotion detection */
+        .webcam-container {
+            margin-top: 20px;
+        }
+        
+        .webcam-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .webcam-feed {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .face-preview {
+            border: 1px solid #ddd;
+            width: 160px;
+            height: 160px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+        }
+        
+        .face-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+        
+        .emotion-display {
+            margin-top: 15px;
+        }
+        
+        .emotion-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .emotion-label {
+            width: 80px;
+            font-size: 14px;
+        }
+        
+        .emotion-bar-container {
+            flex-grow: 1;
+            height: 15px;
+            background-color: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 0 10px;
+        }
+        
+        .emotion-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease-in-out;
+        }
+        
+        .emotion-value {
+            width: 40px;
+            text-align: right;
+            font-size: 14px;
+        }
+        
+        /* Color coding for emotion bars */
+        #neutral-bar { background-color: #aaa; }
+        #satisfied-bar { background-color: #4CAF50; }
+        #unsatisfied-bar { background-color: #F44336; }
+        #happy-bar { background-color: #4CAF50; }
+        #sad-bar { background-color: #2196F3; }
+        #angry-bar { background-color: #F44336; }
+        #fear-bar { background-color: #9C27B0; }
+        #surprise-bar { background-color: #FF9800; }
+        #disgust-bar { background-color: #795548; }
+        
+        /* Camera status indicators */
+        .status-indicator {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        
+        .status-indicator.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .status-indicator.inactive {
+            background-color: #F44336;
+            color: white;
+        }
+        
+        .toggle-camera-btn {
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .toggle-camera-btn:hover {
+            background-color: #388E3C;
+        }
+        
+        /* Hide canvas used for processing */
+        .hidden {
+            display: none;
+        }
+        
+        /* Emotion summary section */
+        .emotion-summary {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        /* Detailed emotions section */
+        .detailed-emotions {
+            margin-top: 10px;
+        }
+        
+        .detailed-emotions-content {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-page">
+        <div class="quiz-header">
+            <h1 class="quiz-title">{{ quiz.title }}</h1>
+            
+            <div class="quiz-meta">
+                <div class="question-counter">
+                    <span class="current">{{ question_number }}</span>
+                    <span class="separator">/</span>
+                    <span class="total">{{ total_questions }}</span>
+                </div>
+                
+                <div class="timer-container">
+                    <div class="quiz-timer" data-time-limit="{{ question.time_limit }}" id="question-timer">
+                        <i class="fas fa-clock"></i>
+                        <span class="time-remaining">{{ question.time_limit }}</span>
+                    </div>
+                    
+                    {% if remaining_seconds > 0 %}
+                        <div class="quiz-timer overall-timer" id="overall-timer" data-remaining="{{ remaining_seconds }}">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span class="time-remaining">{{ (remaining_seconds / 60)|int }}:{{ (remaining_seconds % 60)|int }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="quiz-content">
+            <div class="question-container">
+                <div class="question-text">
+                    {{ question.text }}
+                </div>
+                
+                {% if question.image %}
+                    <div class="question-image">
+                        <img src="{{ url_for('static', filename='uploads/questions/' + question.image) }}" alt="Question Image">
+                    </div>
+                {% endif %}
+                
+                <div class="options-container">
+                    <div class="option" data-option="option1">
+                        <span class="option-marker">A</span>
+                        <span class="option-text">{{ question.option1 }}</span>
+                    </div>
+                    
+                    <div class="option" data-option="option2">
+                        <span class="option-marker">B</span>
+                        <span class="option-text">{{ question.option2 }}</span>
+                    </div>
+                    
+                    <div class="option" data-option="option3">
+                        <span class="option-marker">C</span>
+                        <span class="option-text">{{ question.option3 }}</span>
+                    </div>
+                    
+                    <div class="option" data-option="option4">
+                        <span class="option-marker">D</span>
+                        <span class="option-text">{{ question.option4 }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            {% if use_facial_analysis %}
+                <div class="webcam-container">
+                    <div class="webcam-header">
+                        <h3>Facial Expression Analysis</h3>
+                        <div class="webcam-status">
+                            <span id="camera-status" class="status-indicator inactive">Camera Off</span>
+                            <button id="toggle-camera" class="toggle-camera-btn">
+                                <i class="fas fa-video"></i> Enable Camera
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="webcam-content">
+                        <div class="webcam-feed">
+                            <div>
+                                <video id="webcam" autoplay playsinline width="320" height="240"></video>
+                                <canvas id="canvas" width="320" height="240" class="hidden"></canvas>
+                            </div>
+                            
+                            <div class="face-preview">
+                                <!-- Face detection preview will be shown here -->
+                                <div class="no-face-detected">No face detected</div>
+                            </div>
+                        </div>
+                        
+                        <div class="emotion-display">
+                            <!-- Primary emotions (simplified) -->
+                            <div class="emotion-summary">
+                                <h5>Overall Mood</h5>
+                                
+                                <div class="emotion-item" data-emotion="neutral">
+                                    <span class="emotion-label">Neutral</span>
+                                    <div class="emotion-bar-container">
+                                        <div class="emotion-bar" id="neutral-bar"></div>
+                                    </div>
+                                    <span class="emotion-value" id="neutral-value">0%</span>
+                                </div>
+                                
+                                <div class="emotion-item" data-emotion="satisfied">
+                                    <span class="emotion-label">Satisfied</span>
+                                    <div class="emotion-bar-container">
+                                        <div class="emotion-bar" id="satisfied-bar"></div>
+                                    </div>
+                                    <span class="emotion-value" id="satisfied-value">0%</span>
+                                </div>
+                                
+                                <div class="emotion-item" data-emotion="unsatisfied">
+                                    <span class="emotion-label">Unsatisfied</span>
+                                    <div class="emotion-bar-container">
+                                        <div class="emotion-bar" id="unsatisfied-bar"></div>
+                                    </div>
+                                    <span class="emotion-value" id="unsatisfied-value">0%</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Detailed emotions (collapsible) -->
+                            <div class="detailed-emotions">
+                                <button class="btn btn-sm btn-outline-secondary" id="toggle-detailed-emotions">
+                                    Show Detailed Emotions
+                                </button>
+                                
+                                <div class="detailed-emotions-content" style="display: none;">
+                                    <div class="emotion-item" data-emotion="happy">
+                                        <span class="emotion-label">Happy</span>
+                                        <div class="emotion-bar-container">
+                                            <div class="emotion-bar" id="happy-bar"></div>
+                                        </div>
+                                        <span class="emotion-value" id="happy-value">0%</span>
+                                    </div>
+                                    
+                                    <div class="emotion-item" data-emotion="sad">
+                                        <span class="emotion-label">Sad</span>
+                                        <div class="emotion-bar-container">
+                                            <div class="emotion-bar" id="sad-bar"></div>
+                                        </div>
+                                        <span class="emotion-value" id="sad-value">0%</span>
+                                    </div>
+                                    
+                                    <div class="emotion-item" data-emotion="angry">
+                                        <span class="emotion-label">Angry</span>
+                                        <div class="emotion-bar-container">
+                                            <div class="emotion-bar" id="angry-bar"></div>
+                                        </div>
+                                        <span class="emotion-value" id="angry-value">0%</span>
+                                    </div>
+                                    
+                                    <div class="emotion-item" data-emotion="fear">
+                                        <span class="emotion-label">Fear</span>
+                                        <div class="emotion-bar-container">
+                                            <div class="emotion-bar" id="fear-bar"></div>
+                                        </div>
+                                        <span class="emotion-value" id="fear-value">0%</span>
+                                    </div>
+                                    
+                                    <div class="emotion-item" data-emotion="surprise">
+                                        <span class="emotion-label">Surprise</span>
+                                        <div class="emotion-bar-container">
+                                            <div class="emotion-bar" id="surprise-bar"></div>
+                                        </div>
+                                        <span class="emotion-value" id="surprise-value">0%</span>
+                                    </div>
+                                    
+                                    <div class="emotion-item" data-emotion="disgust">
+                                        <span class="emotion-label">Disgust</span>
+                                        <div class="emotion-bar-container">
+                                            <div class="emotion-bar" id="disgust-bar"></div>
+                                        </div>
+                                        <span class="emotion-value" id="disgust-value">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Define quiz data
+            const quizData = {
+                submitUrl: "{{ url_for('submit_answer', quiz_id=quiz.id, question_id=question.id) }}",
+                questionId: "{{ question.id }}",
+                timeLimit: parseInt("{{ question.time_limit }}"),
+                useFacialAnalysis: "{{ 'true' if use_facial_analysis else 'false' }}"
+            };
+            
+            // Initialize timers
+            let selectedOption = null;
+            let answerTime = 0;
+            let timeRemaining = quizData.timeLimit;
+            let questionTimer;
+            let overallTimer;
+            
+            // Question timer
+            const questionTimerElement = document.getElementById('question-timer');
+            questionTimer = setInterval(function() {
+                timeRemaining--;
+                questionTimerElement.querySelector('.time-remaining').textContent = timeRemaining;
+                
+                // Update timer color based on time remaining
+                if (timeRemaining <= 5) {
+                    questionTimerElement.classList.add('critical');
+                } else if (timeRemaining <= 10) {
+                    questionTimerElement.classList.add('warning');
+                }
+                
+                // Auto-submit when time runs out
+                if (timeRemaining <= 0) {
+                    clearInterval(questionTimer);
+                    submitAnswer();
+                }
+            }, 1000);
+            
+            // Overall quiz timer
+            const overallTimerElement = document.getElementById('overall-timer');
+            if (overallTimerElement) {
+                let remainingSeconds = parseInt(overallTimerElement.getAttribute('data-remaining'));
+                
+                overallTimer = setInterval(function() {
+                    remainingSeconds--;
+                    
+                    const minutes = Math.floor(remainingSeconds / 60);
+                    const seconds = remainingSeconds % 60;
+                    overallTimerElement.querySelector('.time-remaining').textContent = 
+                        `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                    
+                    // Update timer color based on time remaining
+                    if (remainingSeconds <= 60) {
+                        overallTimerElement.classList.add('critical');
+                    } else if (remainingSeconds <= 180) {
+                        overallTimerElement.classList.add('warning');
+                    }
+                    
+                    // Auto-submit when time runs out
+                    if (remainingSeconds <= 0) {
+                        clearInterval(overallTimer);
+                        submitAnswer();
+                    }
+                }, 1000);
+            }
+            
+            // Option selection
+            const options = document.querySelectorAll('.option');
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    // Remove selection from other options
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    
+                    // Add selection to clicked option
+                    this.classList.add('selected');
+                    
+                    // Store selected option
+                    selectedOption = this.getAttribute('data-option');
+                    
+                    // Store answer time
+                    answerTime = quizData.timeLimit - timeRemaining;
+                    
+                    // Auto-submit after a short delay
+                    setTimeout(submitAnswer, 500);
+                });
+            });
+            
+            // Toggle detailed emotions
+            const toggleDetailedBtn = document.getElementById('toggle-detailed-emotions');
+            if (toggleDetailedBtn) {
+                toggleDetailedBtn.addEventListener('click', function() {
+                    const detailedContent = document.querySelector('.detailed-emotions-content');
+                    if (detailedContent.style.display === 'none') {
+                        detailedContent.style.display = 'block';
+                        this.textContent = 'Hide Detailed Emotions';
+                    } else {
+                        detailedContent.style.display = 'none';
+                        this.textContent = 'Show Detailed Emotions';
+                    }
+                });
+            }
+            
+            // Initialize facial analysis if enabled
+            if (quizData.useFacialAnalysis) {
+                const toggleCameraBtn = document.getElementById('toggle-camera');
+                const cameraStatus = document.getElementById('camera-status');
+                const videoElement = document.getElementById('webcam');
+                
+                // Set up camera toggle button
+                toggleCameraBtn.addEventListener('click', function() {
+                    if (!emotionDetectionActive) {
+                        // Start camera
+                        initializeEmotionDetection(videoElement, cameraStatus, toggleCameraBtn);
+                    } else {
+                        // Stop camera
+                        stopEmotionDetection();
+                        
+                        // Update UI
+                        toggleCameraBtn.innerHTML = '<i class="fas fa-video"></i> Enable Camera';
+                        cameraStatus.textContent = 'Camera Off';
+                        cameraStatus.classList.remove('active');
+                        cameraStatus.classList.add('inactive');
+                    }
+                });
+                
+                // Auto-start camera after a short delay
+                setTimeout(() => {
+                    if (toggleCameraBtn && !emotionDetectionActive) {
+                        toggleCameraBtn.click();
+                    }
+                }, 1000);
+            }
+            
+            // Submit answer function
+            function submitAnswer() {
+                // Clear timers
+                clearInterval(questionTimer);
+                if (overallTimer) clearInterval(overallTimer);
+                
+                // Default to the first option if nothing selected
+                if (!selectedOption) {
+                    selectedOption = 'option1';
+                    answerTime = quizData.timeLimit;
+                }
+                
+                // Get emotions data if facial analysis is enabled
+                let emotionsData = {};
+                if (quizData.useFacialAnalysis && emotionDetectionActive) {
+                    emotionsData = getCurrentEmotionData();
+                }
+                
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('answer', selectedOption);
+                formData.append('answer_time', answerTime);
+                
+                // Add emotions data if available
+                if (Object.keys(emotionsData).length > 0) {
+                    formData.append('emotions_data', JSON.stringify(emotionsData));
+                }
+                
+                // Stop emotion detection
+                if (quizData.useFacialAnalysis && emotionDetectionActive) {
+                    stopEmotionDetection();
+                }
+                
+                // Submit answer to server
+                fetch(quizData.submitUrl, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.completed) {
+                            // Quiz completed, redirect to results
+                            window.location.href = data.redirect;
+                        } else {
+                            // Move to next question
+                            window.location.reload();
+                        }
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting answer:', error);
+                    alert('An error occurred while submitting your answer. Please try again.');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
