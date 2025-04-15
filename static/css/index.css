@@ -112,36 +112,44 @@ p {
 }
 
 /* Header & Navigation */
+/* Header & Navigation */
 header {
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     position: fixed;
     width: 100%;
     z-index: 1000;
     transition: all 0.3s ease;
-    padding: 1rem;
+    padding: 1rem 0;
+}
+
+header.scrolled {
+    background: rgba(255, 255, 255, 0.98);
+    padding: 0.5rem 0;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+header .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-header.scrolled {
-    padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.98);
-}
-
 .logo {
-    color: var(--primary-color);
+    color: var(--accent-color);
     font-weight: 700;
     text-decoration: none;
-    font-size: 1.8rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
     transition: all 0.3s ease;
 }
 
 .logo:hover {
-    color: var(--primary-dark);
+    opacity: 0.9;
 }
 
 /* Mobile menu button */
@@ -151,11 +159,9 @@ header.scrolled {
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--dark-text);
-}
-
-nav {
-    transition: all 0.3s ease;
+    color: #333;
+    padding: 0.5rem;
+    z-index: 1001;
 }
 
 nav ul {
@@ -167,7 +173,7 @@ nav ul {
 }
 
 nav ul li a {
-    color: var(--dark-text);
+    color: #333;
     text-decoration: none;
     font-weight: 500;
     transition: all 0.3s ease;
@@ -182,12 +188,12 @@ nav ul li a::after {
     left: 0;
     width: 0;
     height: 2px;
-    background: var(--primary-color);
+    background: var(--accent-color);
     transition: width 0.3s ease;
 }
 
 nav ul li a:hover {
-    color: var(--primary-color);
+    color: var(--accent-color);
 }
 
 nav ul li a:hover::after {
@@ -199,81 +205,139 @@ nav ul li a:hover::after {
     gap: 1rem;
 }
 
-.auth-buttons a {
-    transition: all 0.3s ease !important;
+.auth-btn {
+    background-color: var(--accent-color);
+    border: 2px solid var(--accent-color);
+    color: white;
+    text-decoration: none;
+    padding: 0.6rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 50px;
+    transition: all 0.3s;
 }
 
-.auth-buttons a:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+.auth-btn:hover {
+    opacity: 0.9;
+    color: white;
+}
+
+/* Mobile auth buttons - hidden by default */
+.mobile-auth-buttons {
+    display: none;
 }
 
 /* Mobile Responsiveness */
-@media screen and (max-width: 768px) {
-    .menu-toggle {
-        display: block;
-    }
-    
-    nav {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        width: 100%;
-        background: rgba(255, 255, 255, 0.98);
-        height: 0;
-        overflow: hidden;
-        visibility: hidden;
-        opacity: 0;
-        transition: all 0.3s ease;
-    }
-    
-    nav.active {
-        height: auto;
-        visibility: visible;
-        opacity: 1;
-        padding: 1rem 0;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-    }
-    
+@media screen and (max-width: 992px) {
     nav ul {
-        flex-direction: column;
-        gap: 1rem;
-        padding: 0 1rem;
+        gap: 1.5rem;
     }
     
-    nav ul li {
-        width: 100%;
-    }
-    
-    nav ul li a {
-        display: block;
-        width: 100%;
-        padding: 0.5rem 0;
-    }
-    
-    .auth-buttons {
-        margin-top: 1rem;
-        width: 100%;
-        justify-content: center;
-        padding: 0 1rem;
-    }
-    
-    .auth-buttons a {
-        flex: 1;
-        text-align: center;
+    .auth-btn {
+        padding: 0.5rem 1.2rem;
+        font-size: 0.9rem;
     }
 }
 
-/* For very small screens */
-@media screen and (max-width: 480px) {
-    .logo {
-        font-size: 1.5rem;
+@media screen and (max-width: 768px) {
+    body.menu-open {
+        overflow: hidden;
     }
     
+    header .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        padding: 1rem;
+    }
+    
+    /* Center the logo */
+    .logo {
+        margin: 0 auto;
+        text-align: center;
+        order: 2;
+        font-size: 2rem;
+    }
+    
+    /* Move menu toggle to right corner */
+    .menu-toggle {
+        display: block;
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        order: 3;
+        font-size: 1.5rem;
+        z-index: 1002;
+    }
+    
+    /* Hide the auth buttons in header for mobile */
     .auth-buttons {
+        display: none;
+    }
+    
+    /* Mobile menu styles */
+    nav {
+        display: none;
+    }
+    
+    nav.mobile-active {
+        display: flex;
         flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background: rgba(255, 255, 255, 0.98);
+        z-index: 1000;
+    }
+    
+    nav.mobile-active ul {
+        flex-direction: column;
+        width: 100%;
+        text-align: center;
+        gap: 1.5rem;
+    }
+    
+    nav.mobile-active ul li a {
+        font-size: 1.2rem;
+        padding: 0.5rem 0;
+        display: block;
+    }
+    
+    /* Add auth buttons to mobile menu */
+    .mobile-auth-buttons {
+        display: none;
+        margin-top: 2rem;
+        width: 100%;
+        text-align: center;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    nav.mobile-active .mobile-auth-buttons {
+        display: flex;
+    }
+    
+    .mobile-auth-buttons .auth-btn {
+        display: block;
+        width: 80%;
+        margin: 0 auto;
+        text-align: center;
+        padding: 0.8rem 0;
     }
 }
+
+@media screen and (max-width: 576px) {
+    .auth-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+}
+
 
 /* Hero Section */
 .hero-section {

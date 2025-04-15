@@ -17,8 +17,11 @@
 <body>
     <!-- Header -->
     <header class="py-3">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div class="logo fs-3 fw-bold" style="color: var(--accent-color)">Learn Lens</div>
+        <div class="container">
+            <button class="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="logo fs-3 fw-bold">Learn Lens</div>
             <nav>
                 <ul class="d-flex gap-4 list-unstyled mb-0">
                     <li><a href="#home" class="text-decoration-none text-dark">Home</a></li>
@@ -26,25 +29,15 @@
                     <li><a href="#features" class="text-decoration-none text-dark">Features</a></li>
                     <li><a href="#contact" class="text-decoration-none text-dark">Contact</a></li>
                 </ul>
+                <!-- Mobile auth buttons inside nav -->
+                <div class="mobile-auth-buttons">
+                    <a href="/login" class="auth-btn">Sign In</a>
+                    <a href="/register" class="auth-btn">Register Now</a>
+                </div>
             </nav>
-            <div class="auth-buttons d-flex gap-3">
-                <a href="/login" class="btn"
-                   style="background-color: #4CAF50; border: 2px solid #4CAF50; color: white; text-decoration: none; padding: 0.6rem 1.5rem; font-size: 1rem; border-radius: 50px; transition: all 0.3s;"
-                   onmouseover="this.style.backgroundColor='#388E3C'; this.style.borderColor='#388E3C'; this.style.color='white';"
-                   onmouseout="this.style.backgroundColor='#4CAF50'; this.style.borderColor='#4CAF50'; this.style.color='white';">
-                   Sign In
-                </a>
-                
-                <a href="/register" class="btn"
-                   style="background-color: #4CAF50; border: 2px solid #4CAF50; color: white; text-decoration: none; padding: 0.6rem 1.5rem; font-size: 1rem; border-radius: 50px; transition: all 0.3s;"
-                   onmouseover="this.style.backgroundColor='#388E3C'; this.style.borderColor='#388E3C'; this.style.color='white';"
-                   onmouseout="this.style.backgroundColor='#4CAF50'; this.style.borderColor='#4CAF50'; this.style.color='white';">
-                   Register Now
-                </a>
-              </div>
-            
         </div>
     </header>
+
 
         <!-- Home Section -->
         <section id="home" class="hero-section">
@@ -52,8 +45,8 @@
                 <h1 id="hero-text">Welcome to Learn Lens!</h1>
                 <p id="hero-description">Adaptive learning with intelligent feedback.</p>
                 <div class="cta-buttons">
-                    <a href="#">Get Started</a>
-                    <a href="#">Learn More</a>
+                    <a href="/register">Get Started</a>
+                    <a href="/register">Learn More</a>
                 </div>
             </div>
             <div class="hero-image">
@@ -67,7 +60,7 @@
         <div class="container text-center">
             <h1 class="display-4 mb-4 animated fadeInUp">About Learn Lens</h1>
             <p class="lead mb-5 animated fadeInUp" data-aos="fade-up" data-aos-delay="200">Revolutionizing Education Through Artificial Intelligence</p>
-            <a href="/get-started" class="btn btn-primary btn-lg btn-hover animated bounceIn" data-aos="fade-up" data-aos-delay="300">Get Started</a>
+            <a href="/register" class="btn btn-primary btn-lg btn-hover animated bounceIn" data-aos="fade-up" data-aos-delay="300">Get Started</a>
         </div>
     </div>
 
@@ -357,78 +350,125 @@ h2 {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
-        // Parallax Effect
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            const parallaxElements = document.querySelectorAll('.parallax-bg');
+    document.addEventListener('DOMContentLoaded', function() {
+            // Mobile menu toggle
+            const menuToggle = document.querySelector('.menu-toggle');
+            const nav = document.querySelector('nav');
             
-            parallaxElements.forEach(element => {
-                const speed = 0.5;
-                element.style.transform = `translateY(${scrolled * speed}px)`;
+            if (menuToggle && nav) {
+                menuToggle.addEventListener('click', function() {
+                    nav.classList.toggle('mobile-active');
+                    document.body.classList.toggle('menu-open');
+                    
+                    // Toggle icon between bars and X
+                    const icon = menuToggle.querySelector('i');
+                    if (icon.classList.contains('fa-bars')) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
+                    } else {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+                
+                // Close menu when clicking a link
+                const navLinks = document.querySelectorAll('nav ul li a, .mobile-auth-buttons .auth-btn');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function() {
+                        nav.classList.remove('mobile-active');
+                        document.body.classList.remove('menu-open');
+                        
+                        // Reset icon to bars
+                        const icon = menuToggle.querySelector('i');
+                        if (icon) {
+                            icon.classList.remove('fa-times');
+                            icon.classList.add('fa-bars');
+                        }
+                    });
+                });
+            }
+
+            // Parallax Effect for general elements
+            window.addEventListener('scroll', () => {
+                const scrolled = window.pageYOffset;
+                const parallaxElements = document.querySelectorAll('.parallax-bg');
+                
+                parallaxElements.forEach(element => {
+                    const speed = 0.5;
+                    element.style.transform = `translateY(${scrolled * speed}px)`;
+                });
+            });
+
+            // Parallax Effect for specific image
+            window.addEventListener("scroll", function() {
+                let scrollPosition = window.scrollY;
+                const parallaxImg = document.querySelector(".parallax-img");
+                if (parallaxImg) {
+                    parallaxImg.style.transform = `translateY(${scrollPosition * 0.3}px)`;
+                }
+            });
+
+            // Hero content rotation
+            const heroTexts = [
+                "Welcome to Learn Lens!",
+                "Empowering Learning with Intelligence",
+                "Intelligent Quiz Analytics for Everyone",
+                "Where AI Meets Education"
+            ];
+
+            const heroDescriptions = [
+                "Adaptive learning with intelligent feedback.",
+                "Personalized educational experiences",
+                "AI-powered learning solutions",
+                "Smart learning for better outcomes"
+            ];
+
+            const heroImages = [
+                "/static/images/image1.jpg",
+                "/static/images/image2.jpg",
+                "/static/images/image3.jpg"
+            ];
+
+            let index = 0;
+            const heroTextElement = document.getElementById("hero-text");
+            const heroDescElement = document.getElementById("hero-description");
+            const heroImageElement = document.getElementById("hero-image");
+
+            // Only run hero content rotation if elements exist
+            if (heroTextElement && heroDescElement && heroImageElement) {
+                function changeHeroContent() {
+                    index = (index + 1) % heroTexts.length;
+                    heroImageElement.style.opacity = 0;
+                    
+                    setTimeout(() => {
+                        heroTextElement.textContent = heroTexts[index];
+                        heroDescElement.textContent = heroDescriptions[index];
+                        heroImageElement.src = heroImages[index % heroImages.length];
+                        heroImageElement.style.opacity = 1;
+                    }, 500);
+                }
+
+                changeHeroContent();
+                setInterval(changeHeroContent, 5000);
+            }
+
+            // Initialize AOS (Animate On Scroll) if it exists
+            if (typeof AOS !== 'undefined') {
+                AOS.init({ once: true });
+            }
+
+            // Add scroll class to header for styling
+            window.addEventListener('scroll', function() {
+                const header = document.querySelector('header');
+                if (header) {
+                    if (window.scrollY > 50) {
+                        header.classList.add('scrolled');
+                    } else {
+                        header.classList.remove('scrolled');
+                    }
+                }
             });
         });
-
-       const heroTexts = [
-            "Welcome to Learn Lens!",
-            "Empowering Learning with Intelligence",
-            "Intelligent Quiz Analytics for Everyone",
-            "Where AI Meets Education"
-        ];
-
-        const heroDescriptions = [
-            "Adaptive learning with intelligent feedback.",
-            "Personalized educational experiences",
-            "AI-powered learning solutions",
-            "Smart learning for better outcomes"
-        ];
-
-        const heroImages = [
-            "/static/images/image1.jpg",
-            "/static/images/image2.jpg",
-            "/static/images/image3.jpg"
-        ];
-
-        let index = 0;
-        const heroTextElement = document.getElementById("hero-text");
-        const heroDescElement = document.getElementById("hero-description");
-        const heroImageElement = document.getElementById("hero-image");
-
-        function changeHeroContent() {
-            index = (index + 1) % heroTexts.length;
-            heroImageElement.style.opacity = 0;
-            
-            setTimeout(() => {
-                heroTextElement.textContent = heroTexts[index];
-                heroDescElement.textContent = heroDescriptions[index];
-                heroImageElement.src = heroImages[index % heroImages.length];
-                heroImageElement.style.opacity = 1;
-            }, 500);
-        }
-
-        changeHeroContent();
-        setInterval(changeHeroContent, 5000);
-         // Animation script from 1st code
-
-        function changeHeroContent() {
-            index = (index + 1) % heroTexts.length;
-            heroImageElement.style.opacity = 0;
-            
-            setTimeout(() => {
-                heroTextElement.textContent = heroTexts[index];
-                heroDescElement.textContent = heroDescriptions[index];
-                heroImageElement.src = heroImages[index % heroImages.length];
-                heroImageElement.style.opacity = 1;
-            }, 500);
-        }
-        /* Parallax Effect */
-window.addEventListener("scroll", function() {
-    let scrollPosition = window.scrollY;
-    document.querySelector(".parallax-img").style.transform = `translateY(${scrollPosition * 0.3}px)`;
-});
-
-        AOS.init({ once: true });
-        changeHeroContent();
-        setInterval(changeHeroContent, 5000);
     </script>
 </body>
 </html>
