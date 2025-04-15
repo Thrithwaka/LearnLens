@@ -37,6 +37,7 @@ import cv2
 from datetime import datetime, timedelta
 from deepface import DeepFace
 import io
+from PIL import Image
 from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 import time
@@ -1263,7 +1264,45 @@ def quiz_result(quiz_id):
         format_datetime=format_datetime,
         emotion_summary=emotion_summary
     )
-
+@app.route('/quiz/join/<access_code>')
+def join_quiz_by_link(access_code):
+    """Join a quiz directly using an access code from a link"""
+    # Find quiz by access code
+    quiz = Quiz.query.filter_by(access_code=access_code).first_or_404()
+    
+    # If user is not logged in, redirect to login
+    if not current_user.is_authenticated:
+        # Store the access code in session to redirect back after login
+        session['joining_quiz_code'] = access_code
+        flash('Please log in to join the quiz', 'info')
+        return redirect(url_for('login'))
+    
+    # Update quiz status
+    quiz.update_status()
+    
+    # Check if quiz is active
+    if quiz.status != 'active':
+        if quiz.status == 'scheduled':
+            flash('This quiz has not started yet', 'warning')
+        elif quiz.status == 'ended':
+            flash('This quiz has already ended', 'warning')
+        else:
+            flash('This quiz is not available', 'warning')
+        return redirect(url_for('dashboard'))
+    
+    # Check if user has already attempted this quiz
+    existing_attempt = Attempt.query.filter_by(quiz_id=quiz.id, user_id=current_user.id).first()
+    if existing_attempt and existing_attempt.completed_at:
+        flash('You have already completed this quiz', 'info')
+        return redirect(url_for('quiz_result', quiz_id=quiz.id))
+    
+    # Start new attempt or continue existing one
+    if not existing_attempt:
+        attempt = Attempt(quiz_id=quiz.id, user_id=current_user.id)
+        db.session.add(attempt)
+        db.session.commit()
+    
+    return redirect(url_for('take_quiz', quiz_id=quiz.id))
 
 @app.route('/profile')
 @login_required
