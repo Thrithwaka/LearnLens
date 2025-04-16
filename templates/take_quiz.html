@@ -184,20 +184,27 @@
                     </div>
                 {% endif %}
                 
-                <!-- Updated options container -->
                 <div class="options-container">
-                    {% for option in options %}
-                    <div class="option" data-option="{{ option.key }}">
-                        <span class="option-marker">{{ option.marker }}</span>
-                        <span class="option-text">{{ option.text }}</span>
+                    <div class="option" data-option="option1">
+                        <span class="option-marker">A</span>
+                        <span class="option-text">{{ question.option1 }}</span>
                     </div>
-                    {% endfor %}
+                    
+                    <div class="option" data-option="option2">
+                        <span class="option-marker">B</span>
+                        <span class="option-text">{{ question.option2 }}</span>
+                    </div>
+                    
+                    <div class="option" data-option="option3">
+                        <span class="option-marker">C</span>
+                        <span class="option-text">{{ question.option3 }}</span>
+                    </div>
+                    
+                    <div class="option" data-option="option4">
+                        <span class="option-marker">D</span>
+                        <span class="option-text">{{ question.option4 }}</span>
+                    </div>
                 </div>
-                
-                <!-- Hidden field to store option order -->
-                {% if quiz.shuffle_options %}
-                <input type="hidden" id="option_order" name="option_order" value="{{ options|map(attribute='key')|list|tojson }}">
-                {% endif %}
             </div>
             
             {% if use_facial_analysis %}
@@ -334,7 +341,6 @@
             let timeRemaining = quizData.timeLimit;
             let questionTimer;
             let overallTimer;
-            let startTime = Date.now(); // Track when the question was loaded
             
             // Question timer
             const questionTimerElement = document.getElementById('question-timer');
@@ -384,11 +390,6 @@
                 }, 1000);
             }
             
-            // Calculate answer time function
-            function calculateAnswerTime() {
-                return (Date.now() - startTime) / 1000; // Time in seconds
-            }
-            
             // Option selection
             const options = document.querySelectorAll('.option');
             options.forEach(option => {
@@ -403,7 +404,7 @@
                     selectedOption = this.getAttribute('data-option');
                     
                     // Store answer time
-                    answerTime = calculateAnswerTime();
+                    answerTime = quizData.timeLimit - timeRemaining;
                     
                     // Auto-submit after a short delay
                     setTimeout(submitAnswer, 500);
@@ -426,14 +427,14 @@
             }
             
             // Initialize facial analysis if enabled
-            if (quizData.useFacialAnalysis === 'true') {
+            if (quizData.useFacialAnalysis) {
                 const toggleCameraBtn = document.getElementById('toggle-camera');
                 const cameraStatus = document.getElementById('camera-status');
                 const videoElement = document.getElementById('webcam');
                 
                 // Set up camera toggle button
                 toggleCameraBtn.addEventListener('click', function() {
-                    if (!window.emotionDetectionActive) {
+                    if (!emotionDetectionActive) {
                         // Start camera
                         initializeEmotionDetection(videoElement, cameraStatus, toggleCameraBtn);
                     } else {
@@ -450,18 +451,10 @@
                 
                 // Auto-start camera after a short delay
                 setTimeout(() => {
-                    if (toggleCameraBtn && !window.emotionDetectionActive) {
+                    if (toggleCameraBtn && !emotionDetectionActive) {
                         toggleCameraBtn.click();
                     }
                 }, 1000);
-            }
-            
-            // Get current emotion data
-            function getCurrentEmotionData() {
-                if (!window.currentEmotions) {
-                    return {};
-                }
-                return window.currentEmotions;
             }
             
             // Submit answer function
@@ -472,13 +465,13 @@
                 
                 // Default to the first option if nothing selected
                 if (!selectedOption) {
-                    selectedOption = document.querySelector('.option').getAttribute('data-option');
+                    selectedOption = 'option1';
                     answerTime = quizData.timeLimit;
                 }
                 
                 // Get emotions data if facial analysis is enabled
                 let emotionsData = {};
-                if (quizData.useFacialAnalysis === 'true' && window.emotionDetectionActive) {
+                if (quizData.useFacialAnalysis && emotionDetectionActive) {
                     emotionsData = getCurrentEmotionData();
                 }
                 
@@ -487,29 +480,20 @@
                 formData.append('answer', selectedOption);
                 formData.append('answer_time', answerTime);
                 
-                // Add option order if shuffled
-                const optionOrderField = document.getElementById('option_order');
-                if (optionOrderField) {
-                    formData.append('option_order', optionOrderField.value);
-                }
-                
                 // Add emotions data if available
                 if (Object.keys(emotionsData).length > 0) {
                     formData.append('emotions_data', JSON.stringify(emotionsData));
                 }
                 
                 // Stop emotion detection
-                if (quizData.useFacialAnalysis === 'true' && window.emotionDetectionActive) {
+                if (quizData.useFacialAnalysis && emotionDetectionActive) {
                     stopEmotionDetection();
                 }
                 
                 // Submit answer to server
                 fetch(quizData.submitUrl, {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {

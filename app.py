@@ -1338,6 +1338,7 @@ def quiz_result(quiz_id):
         format_datetime=format_datetime,
         emotion_summary=emotion_summary
     )
+
 @app.route('/quiz/join/<access_code>')
 def join_quiz_by_link(access_code):
     """Join a quiz directly using an access code from a link"""
