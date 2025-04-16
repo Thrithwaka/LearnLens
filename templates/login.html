@@ -225,9 +225,11 @@
         </form>
 
         <div class="social-login">
-            <button type="button" class="social-btn google">
-                <i class="fab fa-google"></i>
-            </button>
+            <a href="{{ url_for('google_login') }}">
+                <button type="button" class="social-btn google">
+                    <i class="fab fa-google"></i>
+                </button>
+            </a>
             <button type="button" class="social-btn facebook">
                 <i class="fab fa-facebook-f"></i>
             </button>

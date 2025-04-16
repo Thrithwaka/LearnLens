@@ -1,0 +1,298 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz System Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="static/css/admin.css">
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Admin Header -->
+        <header class="admin-header">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Quiz System Administration</h1>
+                    <p class="text-sm opacity-80">Welcome, {{ current_user.username }}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span>Last Login: {{ current_user.last_login.strftime('%Y-%m-%d %H:%M') }}</span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="p-6">
+            <!-- Statistics Cards -->
+            <div class="dashboard-grid">
+                <div class="stats-card">
+                    <h3 class="text-lg font-semibold mb-2">Total Users</h3>
+                    <p class="text-3xl text-blue-600">{{ total_users }}</p>
+                    <p class="text-sm text-gray-500">Active: {{ active_users }}</p>
+                </div>
+                <div class="stats-card">
+                    <h3 class="text-lg font-semibold mb-2">Total Quizzes</h3>
+                    <p class="text-3xl text-green-600">{{ total_quizzes }}</p>
+                    <p class="text-sm text-gray-500">Active: {{ active_quizzes }}</p>
+                </div>
+                <div class="stats-card">
+                    <h3 class="text-lg font-semibold mb-2">Today's Activity</h3>
+                    <p class="text-3xl text-purple-600">{{ today_attempts }}</p>
+                    <p class="text-sm text-gray-500">Quiz Attempts Today</p>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="mt-8">
+                <nav class="flex border-b">
+                    <button class="tab-button active" data-tab="overview">Overview</button>
+                    <button class="tab-button" data-tab="users">Users</button>
+                    <button class="tab-button" data-tab="quizzes">Quizzes</button>
+                    <button class="tab-button" data-tab="roles">Roles</button>
+                    <button class="tab-button" data-tab="settings">Settings</button>
+                </nav>
+
+                <!-- Tab Contents -->
+                <div class="mt-6">
+                    <!-- Overview Tab -->
+                    <div id="overview-tab" class="tab-content">
+                        <div class="chart-container">
+                            <h3 class="text-lg font-semibold mb-4">User Registrations (Last 30 Days)</h3>
+                            <canvas id="registrationChart"></canvas>
+                        </div>
+                        
+                        <div class="chart-container mt-6">
+                            <h3 class="text-lg font-semibold mb-4">Quiz Completion Rates</h3>
+                            <canvas id="quizCompletionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Users Tab -->
+                    <div id="users-tab" class="tab-content hidden">
+                        <div class="mb-4 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold">User Management</h3>
+                            <button class="btn btn-primary">Add New User</button>
+                        </div>
+                        <div class="responsive-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                    <tr>
+                                        <td>{{ user.unique_id }}</td>
+                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.role.name }}</td>
+                                        <td>
+                                            {% if user.is_active %}
+                                            <span class="badge bg-green-100 text-green-800">Active</span>
+                                            {% else %}
+                                            <span class="badge bg-red-100 text-red-800">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm">Edit</button>
+                                            <button class="btn btn-danger btn-sm">Delete</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination mt-4">
+                            <!-- Add pagination items based on your backend logic -->
+                        </div>
+                    </div>
+
+                    <!-- Quizzes Tab -->
+                    <div id="quizzes-tab" class="tab-content hidden">
+                        <div class="mb-4 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold">Quiz Management</h3>
+                        </div>
+                        <div class="responsive-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Created By</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for quiz in quizzes %}
+                                    <tr>
+                                        <td>{{ quiz.title }}</td>
+                                        <td>{{ quiz.quiz_type }}</td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if quiz.status == 'active' %}bg-green-100 text-green-800
+                                                {% elif quiz.status == 'draft' %}bg-gray-100 text-gray-800
+                                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                                {{ quiz.status }}
+                                            </span>
+                                        </td>
+                                        <td>{{ quiz.creator.username }}</td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm">View</button>
+                                            <button class="btn btn-danger btn-sm">Delete</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Roles Tab -->
+                    <div id="roles-tab" class="tab-content hidden">
+                        <div class="mb-4 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold">Role Management</h3>
+                            <button class="btn btn-primary">Add New Role</button>
+                        </div>
+                        <div class="responsive-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>Users Count</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for role in roles %}
+                                    <tr>
+                                        <td>{{ role.name }}</td>
+                                        <td>{{ role.description }}</td>
+                                        <td>{{ role.users|length }}</td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm">Edit</button>
+                                            <button class="btn btn-danger btn-sm">Delete</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div id="settings-tab" class="tab-content hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-lg shadow">
+                                <h3 class="text-lg font-semibold mb-4">System Settings</h3>
+                                <form>
+                                    {% for setting in settings %}
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700">{{ setting.setting_key }}</label>
+                                        <input type="text" name="setting_{{ setting.id }}" 
+                                               value="{{ setting.setting_value }}" 
+                                               class="mt-1">
+                                        <p class="text-sm text-gray-500">{{ setting.description }}</p>
+                                    </div>
+                                    {% endfor %}
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </form>
+                            </div>
+                            
+                            <div class="bg-white p-6 rounded-lg shadow">
+                                <h3 class="text-lg font-semibold mb-4">Emotion Analysis Configuration</h3>
+                                <form>
+                                    {% for config in emotion_configs %}
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            <input type="checkbox" name="active_{{ config.id }}"
+                                                   {% if config.is_active %}checked{% endif %}
+                                                   class="mr-2">
+                                            {{ config.model_name }}
+                                        </label>
+                                        <div class="mt-2">
+                                            {% for param, value in config.config_params.items() %}
+                                            <div class="mt-1">
+                                                <label class="text-sm text-gray-600">{{ param }}</label>
+                                                <input type="text" name="param_{{ config.id }}_{{ param }}"
+                                                       value="{{ value }}" class="mt-1">
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    <button type="submit" class="btn btn-primary">Update Configuration</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and hide all tabs
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+                
+                // Add active class to clicked button and show corresponding tab
+                button.classList.add('active');
+                document.getElementById(button.dataset.tab + '-tab').classList.remove('hidden');
+            });
+        });
+
+        // Initialize charts if data is available
+        if (document.getElementById('registrationChart')) {
+            new Chart(document.getElementById('registrationChart'), {
+                type: 'line',
+                data: {
+                    labels: {{ reg_dates|tojson }},
+                    datasets: [{
+                        label: 'New Users',
+                        data: {{ reg_counts|tojson }},
+                        borderColor: 'rgb(59, 130, 246)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        if (document.getElementById('quizCompletionChart')) {
+            new Chart(document.getElementById('quizCompletionChart'), {
+                type: 'bar',
+                data: {
+                    labels: {{ quiz_dates|tojson }},
+                    datasets: [{
+                        label: 'Completed Quizzes',
+                        data: {{ quiz_counts|tojson }},
+                        backgroundColor: 'rgb(34, 197, 94)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+    </script>
+</body>
+</html>

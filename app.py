@@ -24,7 +24,8 @@ import json
 import os
 import random
 import string
-from sqlalchemy import or_
+from sqlalchemy import or_, func, Float
+from sqlalchemy.orm.exc import NoResultFound
 from flask_sqlalchemy import SQLAlchemy
 import base64
 from datetime import datetime
@@ -41,6 +42,10 @@ from PIL import Image
 from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 import time
+from datetime import datetime
+
+
+
 
 
 
@@ -53,8 +58,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
+
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'profiles'), exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'questions'), exist_ok=True)
+
 
 
 # Initialize extensions ONCE
@@ -64,6 +71,23 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 emotion_api = Blueprint('emotion_api', __name__)
 api_bp = Blueprint('api', __name__)
+admin_bp = Blueprint('admin', __name__)
+
+
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id='7377312818-8gq8sv66717vfpsh22khu7s1bjgd1a46.apps.googleusercontent.com',
+    client_secret='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',
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
+    client_kwargs={'scope': 'email profile'},
+)
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -101,9 +125,13 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True)
     last_login = db.Column(db.DateTime, default=datetime.now)
     
+
+    
     # Relationships
     created_quizzes = db.relationship('Quiz', backref='creator', lazy=True, foreign_keys='Quiz.creator_id')
     quiz_attempts = db.relationship('Attempt', backref='user', lazy=True)
+
+
     
     @staticmethod
     def generate_unique_id(first_name, last_name):
@@ -119,6 +147,7 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Check password against hash"""
         return check_password_hash(self.password, password)
+    
 
 # Quiz model with enhanced features
 class Quiz(db.Model):
@@ -396,13 +425,13 @@ class Question(db.Model):
         
         return stats
 
-# Quiz attempt model
 class Attempt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     quiz_id = db.Column(db.Integer, db.ForeignKey('quiz.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     started_at = db.Column(db.DateTime, default=datetime.now)
     completed_at = db.Column(db.DateTime)
+    question_order = db.Column(db.JSON)  # Store the shuffled question IDs
     
     # Relationships
     answers = db.relationship('Answer', backref='attempt', lazy=True, cascade="all, delete-orphan")
@@ -411,28 +440,79 @@ class Attempt(db.Model):
         """Calculate the score for this attempt"""
         if not self.answers:
             return 0
-        
-        correct_answers = sum(1 for answer in self.answers 
-                             if answer.user_answer == answer.question.correct_answer)
-        
-        return (correct_answers / len(self.answers)) * 100 if self.answers else 0
+
+        # Get all questions that were asked using question_order if available
+        import json
+        question_ids = []
+        if self.question_order:
+            try:
+                question_ids = json.loads(self.question_order) if isinstance(self.question_order, str) else self.question_order
+            except (TypeError, json.JSONDecodeError):
+                question_ids = []
+
+        # If no valid question_order, use the questions from answers
+        if not question_ids:
+            question_ids = [answer.question_id for answer in self.answers]
+
+        total_questions = len(question_ids)
+        if total_questions == 0:
+            return 0
+
+        # Count correct answers
+        correct_answers = 0
+        for answer in self.answers:
+            question = Question.query.get(answer.question_id)
+            if not question:
+                continue
+
+            # IMPORTANT FIX: Handle both option keys and direct values
+            user_value = answer.user_answer
+            correct_value = question.correct_answer
+
+            # If user_answer is an option key, get the actual value
+            if user_value in ['option1', 'option2', 'option3', 'option4']:
+                user_value = getattr(question, user_value)
+
+            # If correct_answer is an option key, get the actual value
+            if correct_value in ['option1', 'option2', 'option3', 'option4']:
+                correct_value = getattr(question, correct_value)
+
+            # Compare the actual values
+            if str(user_value).strip() == str(correct_value).strip():
+                correct_answers += 1
+
+        # Calculate score percentage
+        return (correct_answers / total_questions) * 100
     
     def get_emotion_summary(self):
         """Get a summary of emotions across all answers"""
+        import json
         emotions_summary = {}
         
         for answer in self.answers:
-            if answer.emotions:
-                emotions_data = json.loads(answer.emotions) if isinstance(answer.emotions, str) else answer.emotions
-                for emotion, value in emotions_data.items():
-                    if emotion not in emotions_summary:
-                        emotions_summary[emotion] = []
-                    emotions_summary[emotion].append(value)
+            if not hasattr(answer, 'emotions') or not answer.emotions:
+                continue
+                
+            emotions_data = {}
+            try:
+                if isinstance(answer.emotions, str):
+                    emotions_data = json.loads(answer.emotions)
+                else:
+                    emotions_data = answer.emotions
+            except (TypeError, json.JSONDecodeError):
+                continue
+                
+            for emotion, value in emotions_data.items():
+                if emotion not in emotions_summary:
+                    emotions_summary[emotion] = []
+                emotions_summary[emotion].append(float(value))
         
         # Calculate averages
         return {emotion: sum(values)/len(values) if values else 0 
                 for emotion, values in emotions_summary.items()}
+    
 
+    
 # Answer model with facial expression data
 class Answer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -442,8 +522,7 @@ class Answer(db.Model):
     answer_time = db.Column(db.Float)  # Time taken to answer in seconds
     emotions = db.Column(db.JSON)  # Stores facial expression data as JSON
     answered_at = db.Column(db.DateTime, default=datetime.now)
-    
-
+    option_order = db.Column(db.JSON)  # Store the shuffled option order
     
     def get_correctness(self):
         """Check if the answer is correct"""
@@ -552,35 +631,39 @@ def get_answer_emotion_summary(self):
     }
 
 
+
 # ===== USER LOADER =====
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+
 # Create default admin function
-def create_default_admin():
-    # Check if admin role exists
-    admin_role = Role.query.filter_by(name='Admin').first()
-    if not admin_role:
-        admin_role = Role(name='Admin', description='Administrator with full access')
-        db.session.add(admin_role)
-        db.session.commit()
+# def create_default_admin():
+#     # Check if admin role exists
+#     admin_role = Role.query.filter_by(name='Admin').first()
+#     if not admin_role:
+#         admin_role = Role(name='Admin', description='Administrator with full access')
+#         db.session.add(admin_role)
+#         db.session.commit()
     
-    # Check if default admin exists
-    admin = User.query.filter_by(username='Admin').first()
-    if not admin:
-        admin = User(
-            unique_id=User.generate_unique_id('Admin', 'User'),
-            username='Admin',
-            email='admin@quizplatform.com',
-            first_name='Admin',
-            last_name='User',
-            role_id=admin_role.id,
-            is_admin=True
-        )
-        admin.set_password('20030909')
-        db.session.add(admin)
-        db.session.commit()
+#     # Check if default admin exists
+#     admin = User.query.filter_by(username='Admin').first()
+#     if not admin:
+#         admin = User(
+#             unique_id=User.generate_unique_id('Admin', 'User'),
+#             username='Admin',
+#             email='admin@quizplatform.com',
+#             first_name='Admin',
+#             last_name='User',
+#             role_id=admin_role.id,
+#             is_admin=True
+#         )
+#         admin.set_password('20030909')
+#         db.session.add(admin)
+#         db.session.commit()
+
+
 
 
 @app.route('/analyze_emotion', methods=['POST'])
@@ -886,14 +969,15 @@ def register():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('choice'))
-        
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Check if user exists (could be username or email)
+        # Find user by username or email
         user = User.query.filter((User.username == username) | (User.email == username)).first()
         
+        # Check if user exists and password is correct
         if not user or not user.check_password(password):
             flash('Invalid username or password!', 'danger')
             return render_template('login.html')
@@ -906,10 +990,206 @@ def login():
         login_user(user)
         flash('Logged in successfully!', 'success')
         
-        # Redirect to choice page
+        # If user is admin, redirect to admin dashboard
+        if user.is_admin:
+            return redirect(url_for('admin'))
+        
+        # Otherwise redirect to choice page
         return redirect(url_for('choice'))
     
     return render_template('login.html')
+
+
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    # Get basic statistics
+    total_users = User.query.count()
+    active_users = User.query.filter_by(is_active=True).count()
+    total_quizzes = Quiz.query.count()
+    active_quizzes = Quiz.query.filter_by(status='active').count()
+
+    # Get user registration data for the last 30 days
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    reg_data = db.session.query(
+        func.date(User.created_at).label('date'),
+        func.count(User.id).label('count')
+    ).filter(User.created_at >= thirty_days_ago)\
+     .group_by(func.date(User.created_at))\
+     .all()
+
+    reg_dates = [str(data.date) for data in reg_data]
+    reg_counts = [data.count for data in reg_data]
+
+    # Get quiz creation data
+    quiz_data = db.session.query(
+        func.date(Quiz.created_at).label('date'),
+        func.count(Quiz.id).label('count')
+    ).filter(Quiz.created_at >= thirty_days_ago)\
+     .group_by(func.date(Quiz.created_at))\
+     .all()
+
+    quiz_dates = [str(data.date) for data in quiz_data]
+    quiz_counts = [data.count for data in quiz_data]
+
+    return render_template('admin.html',
+                         total_users=total_users,
+                         active_users=active_users,
+                         total_quizzes=total_quizzes,
+                         active_quizzes=active_quizzes,
+                         reg_dates=reg_dates,
+                         reg_counts=reg_counts,
+                         quiz_dates=quiz_dates,
+                         quiz_counts=quiz_counts)
+
+# @app.route('/admin/users')
+# @login_required
+# def admin_users():
+#     page = request.args.get('page', 1, type=int)
+#     users = User.query.paginate(page=page, per_page=10)
+#     return render_template('admin/users.html', users=users)
+
+# @app.route('/admin/quizzes')
+# @login_required
+# def admin_quizzes():
+#     page = request.args.get('page', 1, type=int)
+#     quizzes = Quiz.query.paginate(page=page, per_page=10)
+#     return render_template('admin/quizzes.html', quizzes=quizzes)
+
+# @app.route('/admin/roles')
+# @login_required
+# def admin_roles():
+#     roles = Role.query.all()
+#     return render_template('admin/roles.html', roles=roles)
+
+# @app.route('/admin/settings')
+# @login_required
+# def admin_settings():
+#     settings = SystemSetting.query.all()
+#     emotion_configs = EmotionConfig.query.all()
+#     return render_template('admin/settings.html',
+#                          settings=settings,
+#                          emotion_configs=emotion_configs)
+
+# @app.route('/admin/user/<int:user_id>', methods=['GET', 'POST'])
+# @login_required
+# def admin_user_detail(user_id):
+#     user = User.query.get_or_404(user_id)
+#     if request.method == 'POST':
+#         user.is_active = bool(request.form.get('is_active'))
+#         user.is_admin = bool(request.form.get('is_admin'))
+#         user.role_id = request.form.get('role_id', type=int)
+        
+#         db.session.commit()
+#         flash('User updated successfully!', 'success')
+#         return redirect(url_for('admin_users'))
+    
+#     roles = Role.query.all()
+#     return render_template('admin/user_detail.html', user=user, roles=roles)
+
+# @app.route('/admin/quiz/<int:quiz_id>')
+# @login_required
+# def admin_quiz_detail(quiz_id):
+#     quiz = Quiz.query.get_or_404(quiz_id)
+#     results = quiz.calculate_results()
+#     return render_template('admin/quiz_detail.html', quiz=quiz, results=results)
+
+# @app.route('/admin/analytics')
+# @login_required
+# def admin_analytics():
+#     # Get overall system analytics
+#     total_attempts = Attempt.query.count()
+#     completion_rate = db.session.query(
+#         func.count(Attempt.id) * 100.0 / func.count(distinct(Attempt.quiz_id))
+#     ).filter(Attempt.completed_at.isnot(None)).scalar() or 0
+
+#     # Get emotion analytics if available
+#     emotion_data = db.session.query(
+#         Question.id,
+#         func.avg(Answer.emotions['satisfaction'].cast(Float)),
+#         func.avg(Answer.emotions['confusion'].cast(Float))
+#     ).join(Answer).group_by(Question.id).all()
+
+#     return render_template('admin/analytics.html',
+#                          total_attempts=total_attempts,
+#                          completion_rate=completion_rate,
+#                          emotion_data=emotion_data)
+
+# @app.route('/admin/settings/update', methods=['POST'])
+# @login_required
+# def update_settings():
+#     if request.method == 'POST':
+#         for key, value in request.form.items():
+#             if key.startswith('setting_'):
+#                 setting_id = int(key.split('_')[1])
+#                 setting = SystemSetting.query.get(setting_id)
+#                 if setting:
+#                     setting.setting_value = value
+#                     setting.updated_by = current_user.id
+        
+#         db.session.commit()
+#         flash('Settings updated successfully!', 'success')
+#         return redirect(url_for('admin_settings'))
+
+
+
+
+@app.route('/login/google')
+def google_login():
+    redirect_uri = url_for('google_authorize', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/login/google/authorize')
+def google_authorize():
+    token = google.authorize_access_token()
+    resp = google.get('userinfo')
+    user_info = resp.json()
+    
+    # Check if user exists
+    user = User.query.filter_by(email=user_info['email']).first()
+    
+    if not user:
+        # Create a new user
+        name_parts = user_info['name'].split()
+        first_name = name_parts[0] if name_parts else user_info.get('given_name', '')
+        last_name = name_parts[-1] if len(name_parts) > 1 else user_info.get('family_name', '')
+        
+        # Get default role
+        default_role = Role.query.filter_by(name='user').first()
+        if not default_role:
+            default_role = Role(name='user')
+            db.session.add(default_role)
+            db.session.commit()
+        
+        # Generate unique ID
+        unique_id = User.generate_unique_id(first_name, last_name)
+        
+        # Create new user with Google info
+        user = User(
+            unique_id=unique_id,
+            username=user_info['email'].split('@')[0],  # Use part of email as username
+            email=user_info['email'],
+            first_name=first_name,
+            last_name=last_name,
+            profile_pic=user_info.get('picture', 'default.png'),
+            role_id=default_role.id,
+            is_active=True,
+            password=None  # No password for Google users
+        )
+        
+        db.session.add(user)
+        db.session.commit()
+    
+    # Update last login time
+    user.last_login = datetime.now()
+    db.session.commit()
+    
+    # Log in the user
+    login_user(user)
+    flash('Successfully logged in with Google!', 'success')
+    
+    # Redirect to choice page
+    return redirect(url_for('choice'))
 
 @app.route('/logout')
 @login_required
@@ -1227,7 +1507,7 @@ def quiz_result(quiz_id):
     quiz = Quiz.query.get_or_404(quiz_id)
     
     # Get user's attempt
-    attempt = Attempt.query.filter_by(quiz_id=quiz_id, user_id=current_user.id).first()
+    attempt = Attempt.query.filter_by(quiz_id=quiz_id, user_id=current_user.id).order_by(Attempt.completed_at.desc()).first()
     
     # If no attempt or not completed, redirect to take the quiz
     if not attempt:
@@ -1237,23 +1517,107 @@ def quiz_result(quiz_id):
     if not attempt.completed_at:
         return redirect(url_for('take_quiz', quiz_id=quiz_id))
     
-    # Calculate score
-    score = attempt.calculate_score()
-    
     # Get all questions with user answers
     questions_with_answers = []
-    for question in quiz.questions:
-        answer = Answer.query.filter_by(attempt_id=attempt.id, question_id=question.id).first()
+    
+    # Use the stored question order if available, otherwise use quiz questions order
+    question_ids = []
+    if attempt.question_order:
+        try:
+            # If question_order is stored as a JSON string
+            import json
+            question_ids = json.loads(attempt.question_order) if isinstance(attempt.question_order, str) else attempt.question_order
+        except (TypeError, json.JSONDecodeError):
+            # If it's already a list or couldn't be parsed
+            question_ids = attempt.question_order
+    
+    # Fallback to all quiz questions if no valid question_order
+    if not question_ids:
+        question_ids = [q.id for q in quiz.questions]
+    
+    # Track correct answers
+    correct_answers = 0
+    
+    # Process each question
+    for question_id in question_ids:
+        question = Question.query.get(question_id)
+        if not question:
+            continue
+            
+        answer = Answer.query.filter_by(attempt_id=attempt.id, question_id=question_id).first()
+        
+        # Default values if no answer found
+        is_correct = False
+        user_answer = None
+        answer_time = None
+        emotions = None
+        
+        # Process answer data if it exists
+        if answer:
+            user_answer = answer.user_answer
+            answer_time = answer.answer_time
+            
+            # IMPORTANT FIX: Handling both option keys and direct answers
+            user_value = user_answer
+            correct_value = question.correct_answer
+            
+            # If user_answer is an option key, get the actual value
+            if user_answer in ['option1', 'option2', 'option3', 'option4']:
+                user_value = getattr(question, user_answer)
+            
+            # If correct_answer is an option key, get the actual value
+            if correct_value in ['option1', 'option2', 'option3', 'option4']:
+                correct_value = getattr(question, correct_value)
+            
+            # Log the comparison for debugging
+            app.logger.debug(f"Answer comparison: User '{user_value}' vs Correct '{correct_value}'")
+            
+            # Check if answer is correct by comparing actual values
+            if str(user_value).strip() == str(correct_value).strip():
+                is_correct = True
+                correct_answers += 1
+            
+            # Get emotions if available
+            if hasattr(answer, 'emotions') and answer.emotions:
+                try:
+                    if isinstance(answer.emotions, str):
+                        import json
+                        emotions = json.loads(answer.emotions)
+                    else:
+                        emotions = answer.emotions
+                except (TypeError, json.JSONDecodeError):
+                    emotions = None
+        
+        # Add question with answer data to the list
         questions_with_answers.append({
             'question': question,
-            'user_answer': answer.user_answer if answer else None,
-            'is_correct': answer.user_answer == question.correct_answer if answer else False,
-            'answer_time': answer.answer_time if answer else None,
-            'emotions': answer.emotions if answer else None
+            'user_answer': user_answer,
+            'is_correct': is_correct,
+            'answer_time': answer_time,
+            'emotions': emotions
         })
     
+    # Calculate score as percentage
+    total_questions = len(question_ids)
+    score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+    
+    # Log the score calculation for debugging
+    app.logger.debug(f"Quiz {quiz_id} score calculation: {correct_answers}/{total_questions} = {score}%")
+    
     # Get emotion summary if facial analysis was used
-    emotion_summary = attempt.get_emotion_summary() if quiz.use_facial_analysis else {}
+    emotion_summary = None
+    if quiz.use_facial_analysis:
+        if hasattr(attempt, 'get_emotion_summary'):
+            emotion_summary = attempt.get_emotion_summary()
+        elif hasattr(attempt, 'emotion_summary'):
+            # Try to get directly from property if method doesn't exist
+            emotion_summary = attempt.emotion_summary
+    
+    # Helper function for formatting datetime
+    def format_datetime(dt):
+        if dt:
+            return dt.strftime('%B %d, %Y at %I:%M %p')
+        return "N/A"
     
     return render_template(
         'quiz_result.html',
@@ -1262,8 +1626,14 @@ def quiz_result(quiz_id):
         score=score,
         questions_with_answers=questions_with_answers,
         format_datetime=format_datetime,
+        getattr=getattr,
         emotion_summary=emotion_summary
     )
+
+
+
+
+
 @app.route('/quiz/join/<access_code>')
 def join_quiz_by_link(access_code):
     """Join a quiz directly using an access code from a link"""
@@ -1417,39 +1787,81 @@ def take_quiz(quiz_id):
     
     # Get or create attempt
     attempt = Attempt.query.filter_by(quiz_id=quiz_id, user_id=current_user.id).first()
-    if not attempt:
-        attempt = Attempt(quiz_id=quiz_id, user_id=current_user.id)
-        db.session.add(attempt)
-        db.session.commit()
-    elif attempt.completed_at:
+    
+    # Handle completed attempts
+    if attempt and attempt.completed_at:
         flash('You have already completed this quiz', 'info')
         return redirect(url_for('quiz_result', quiz_id=quiz_id))
     
-    # Get answered questions
-    answered_question_ids = [answer.question_id for answer in attempt.answers]
+    # Get all questions for this quiz
+    all_questions = Question.query.filter_by(quiz_id=quiz_id).order_by(Question.order).all()
+    if not all_questions:
+        flash('This quiz has no questions', 'warning')
+        return redirect(url_for('dashboard'))
     
-    # Get next unanswered question
-    questions_query = Question.query.filter(
-        Question.quiz_id == quiz_id,
-        ~Question.id.in_(answered_question_ids)
-    )
+    # Create question order list
+    question_order = []
+    if attempt and attempt.question_order:
+        try:
+            # Try to use existing question order
+            question_order = attempt.question_order
+        except Exception:
+            # If there's an error, we'll create a new order below
+            question_order = []
     
-    # Apply question shuffling if enabled
-    if quiz.shuffle_questions:
-        # Use a deterministic shuffle based on attempt id
-        questions = questions_query.all()
-        random.seed(attempt.id)
-        random.shuffle(questions)
-        next_question = questions[0] if questions else None
-    else:
-        # Use the normal order
-        next_question = questions_query.order_by(Question.order).first()
-    
-    # If all questions answered, complete the attempt
-    if not next_question:
-        attempt.completed_at = datetime.now()
+    # If we don't have a valid question order, create one
+    if not question_order:
+        if quiz.shuffle_questions:
+            # Shuffle questions
+            question_ids = [q.id for q in all_questions]
+            random.seed(current_user.id + quiz_id)
+            random.shuffle(question_ids)
+            question_order = question_ids
+        else:
+            # Use original order
+            question_order = [q.id for q in all_questions]
+            
+        # Create or update attempt with new question order
+        if not attempt:
+            attempt = Attempt(
+                quiz_id=quiz_id, 
+                user_id=current_user.id,
+                question_order=question_order
+            )
+            db.session.add(attempt)
+        else:
+            attempt.question_order = question_order
+            
         db.session.commit()
+    
+    # Get answered questions
+    answered_question_ids = []
+    if attempt:
+        answered_question_ids = [answer.question_id for answer in attempt.answers]
+    
+    # Find next unanswered question
+    next_question_id = None
+    # Use a safe check to handle potential issues with question_order
+    for q_id in question_order:
+        if q_id not in answered_question_ids:
+            next_question_id = q_id
+            break
+    
+    # Fallback: If we still don't have a next question, use the first unanswered question
+    if next_question_id is None:
+        for question in all_questions:
+            if question.id not in answered_question_ids:
+                next_question_id = question.id
+                break
+    
+    # All questions answered - complete the attempt
+    if next_question_id is None:
+        if attempt:
+            attempt.completed_at = datetime.now()
+            db.session.commit()
         return redirect(url_for('quiz_result', quiz_id=quiz_id))
+    
+    next_question = Question.query.get(next_question_id)
     
     # Calculate remaining time for the quiz
     if quiz.quiz_type == 'live':
@@ -1465,15 +1877,39 @@ def take_quiz(quiz_id):
     # Determine question number (for display purposes)
     question_number = len(answered_question_ids) + 1
     
+    # Prepare shuffled options if needed
+    options = [
+        {'key': 'option1', 'text': next_question.option1},
+        {'key': 'option2', 'text': next_question.option2},
+        {'key': 'option3', 'text': next_question.option3},
+        {'key': 'option4', 'text': next_question.option4}
+    ]
+    
+    # Shuffle options if enabled
+    if quiz.shuffle_options:
+        # Use a deterministic shuffle based on attempt id, question id, and user id
+        seed_value = 0
+        if attempt:
+            seed_value = attempt.id
+        seed_value += next_question.id + current_user.id
+        random.seed(seed_value)
+        random.shuffle(options)
+    
+    # Map shuffled options to A, B, C, D
+    option_markers = ['A', 'B', 'C', 'D']
+    for i, option in enumerate(options):
+        option['marker'] = option_markers[i]
+    
     return render_template(
         'take_quiz.html',
         quiz=quiz,
         question=next_question,
         attempt=attempt,
         question_number=question_number,
-        total_questions=len(quiz.questions),
+        total_questions=len(all_questions),
         remaining_seconds=remaining_seconds,
-        use_facial_analysis=use_facial_analysis
+        use_facial_analysis=use_facial_analysis,
+        options=options
     )
 
 
@@ -1510,9 +1946,23 @@ def submit_answer(quiz_id, question_id):
     if existing_answer:
         return jsonify({'success': False, 'message': 'Question already answered'})
     
-    # Process answer
-    user_answer = request.form.get('answer')
+    # Process answer - ensure consistent format
+    user_answer = request.form.get('answer', '').strip()
     answer_time = float(request.form.get('answer_time', 0))
+    
+    # Log the captured answer for debugging
+    app.logger.debug(f"Captured answer for question {question_id}: '{user_answer}'")
+    
+    # Get option order if shuffled
+    option_order = None
+    if quiz.shuffle_options:
+        option_order_str = request.form.get('option_order')
+        if option_order_str:
+            try:
+                import json
+                option_order = json.loads(option_order_str)
+            except json.JSONDecodeError:
+                option_order = None
     
     # Process emotions data if available
     emotions_data = request.form.get('emotions_data')
@@ -1520,6 +1970,7 @@ def submit_answer(quiz_id, question_id):
     
     if emotions_data:
         try:
+            import json
             emotions_json = json.loads(emotions_data)
             # Validate emotions data
             if not isinstance(emotions_json, dict):
@@ -1533,7 +1984,8 @@ def submit_answer(quiz_id, question_id):
         question_id=question_id,
         user_answer=user_answer,
         answer_time=answer_time,
-        emotions=emotions_json
+        emotions=emotions_json,
+        option_order=option_order
     )
     
     db.session.add(answer)
@@ -1541,7 +1993,7 @@ def submit_answer(quiz_id, question_id):
     
     # Check if all questions answered
     answered_count = Answer.query.filter_by(attempt_id=attempt.id).count()
-    total_questions = Question.query.filter_by(quiz_id=quiz_id).count()
+    total_questions = len(attempt.question_order) if attempt.question_order else len(quiz.questions)
     
     if answered_count >= total_questions:
         attempt.completed_at = datetime.now()
@@ -1598,12 +2050,12 @@ def quiz_analytics(quiz_id):
         for answer in answers:
             if not answer.emotions:
                 continue
-                
+            
             emotions = answer.emotions
             
             # Find dominant emotion
             dominant_emotion = max(
-                (e for e in emotions.items() if e[0] not in ['satisfied', 'unsatisfied']), 
+                (e for e in emotions.items() if e[0] not in ['satisfied', 'unsatisfied']),
                 key=lambda x: x[1],
                 default=(None, 0)
             )
@@ -1618,9 +2070,13 @@ def quiz_analytics(quiz_id):
         for emotion, count in emotion_counts.items():
             emotion_percentages[emotion] = (count / total_answers) * 100 if total_answers > 0 else 0
         
+        # Get correct/incorrect counts
+        correct_count = sum(1 for answer in answers if answer.user_answer == question.correct_answer)
+        incorrect_count = total_answers - correct_count
+        
         # Calculate satisfaction metrics
-        satisfied_count = sum(1 for answer in answers if answer.emotions.get('satisfied', 0) > 0.5)
-        unsatisfied_count = sum(1 for answer in answers if answer.emotions.get('unsatisfied', 0) > 0.5)
+        satisfied_count = sum(1 for answer in answers if answer.emotions and answer.emotions.get('satisfied', 0) > 0.5)
+        unsatisfied_count = sum(1 for answer in answers if answer.emotions and answer.emotions.get('unsatisfied', 0) > 0.5)
         neutral_count = total_answers - satisfied_count - unsatisfied_count
         
         satisfaction = {
@@ -1634,8 +2090,8 @@ def quiz_analytics(quiz_id):
             'emotions': emotion_percentages,
             'satisfaction': satisfaction,
             'correctness': {
-                'correct': sum(1 for a in answers if a.get_correctness()) / total_answers * 100 if total_answers > 0 else 0,
-                'incorrect': sum(1 for a in answers if not a.get_correctness()) / total_answers * 100 if total_answers > 0 else 0
+                'correct': (correct_count / total_answers) * 100 if total_answers > 0 else 0,
+                'incorrect': (incorrect_count / total_answers) * 100 if total_answers > 0 else 0
             }
         }
     
@@ -2151,7 +2607,7 @@ def join_quiz():
 # Create all tables and default admin
 with app.app_context():
     db.create_all()
-    create_default_admin()
+    # create_default_admin()
 
 # Run the app
 if __name__ == '__main__':
