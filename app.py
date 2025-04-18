@@ -49,11 +49,19 @@ import time
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'learnlens-secret-key')
 
-# Database configuration - properly handle PostgreSQL URLs
+# Database configuration
 database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith('postgres://'):
-    # Render provides URLs starting with postgres:// which SQLAlchemy no longer accepts
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+if database_url:
+    # Handle both postgres:// and postgresql:// URI formats
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    # Ensure proper connection parameters
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Fallback to SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///learnlens.db'
+
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///learnlens.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -583,17 +591,41 @@ def create_default_admin():
 
 
 def initialize_database():
-    """Initialize the database with required data"""
     with app.app_context():
-        # Create tables if they don't exist
-        db.create_all()
-        
-        # Create default roles and admin user
         try:
-            create_default_roles()
-            create_default_admin()
+            # Create all tables
+            db.create_all()
+            
+            # Check if database is empty and needs initial data
+            if Role.query.count() == 0:
+                # Create default roles
+                admin_role = Role(name='admin', description='Administrator with full access')
+                teacher_role = Role(name='teacher', description='Teacher with quiz creation access')
+                student_role = Role(name='student', description='Student with quiz taking access')
+                
+                db.session.add_all([admin_role, teacher_role, student_role])
+                db.session.commit()
+                
+                # Create admin user
+                admin = User(
+                    unique_id=User.generate_unique_id("Admin", "User"),
+                    username="admin",
+                    email="admin@learnlens.com",
+                    first_name="Admin",
+                    last_name="User",
+                    role_id=admin_role.id,
+                    is_admin=True
+                )
+                admin.set_password("adminpassword123")  # Set a default password
+                
+                db.session.add(admin)
+                db.session.commit()
+                print("Database initialized with default data")
+            
+            print("Database setup complete")
         except Exception as e:
-            print(f"Error initializing database: {e}")
+            print(f"Database initialization error: {e}")
+            # Consider adding more specific error handling here
 
 # Create the database tables
 def create_tables():
