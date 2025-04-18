@@ -47,15 +47,22 @@ import time
 
 # Initialize Flask app ONCE
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'learnlens-secret-key'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'learnlens-secret-key')
+
+# Database configuration - properly handle PostgreSQL URLs
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith('postgres://'):
+    # Render provides URLs starting with postgres:// which SQLAlchemy no longer accepts
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///learnlens.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
+# Create upload directories
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'profiles'), exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'questions'), exist_ok=True)
-
 
 # Initialize extensions ONCE
 db = SQLAlchemy(app)
@@ -65,12 +72,12 @@ login_manager.login_view = 'login'
 emotion_api = Blueprint('emotion_api', __name__)
 api_bp = Blueprint('api', __name__)
 
-
+# OAuth configuration
 oauth = OAuth(app)
 google = oauth.register(
     name='google',
-    client_id='7377312818-8gq8sv66717vfpsh22khu7s1bjgd1a46.apps.googleusercontent.com',
-    client_secret='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',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID', '7377312818-8gq8sv66717vfpsh22khu7s1bjgd1a46.apps.googleusercontent.com'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET', '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'),
     access_token_url='https://accounts.google.com/o/oauth2/token',
     access_token_params=None,
     authorize_url='https://accounts.google.com/o/oauth2/auth',
@@ -80,16 +87,15 @@ google = oauth.register(
     client_kwargs={'scope': 'email profile'},
 )
 
+# Upload configuration
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 # ===== MODEL DEFINITIONS =====
 
@@ -463,8 +469,6 @@ class Answer(db.Model):
     emotions = db.Column(db.JSON)  # Stores facial expression data as JSON
     answered_at = db.Column(db.DateTime, default=datetime.now)
     
-
-    
     def get_correctness(self):
         """Check if the answer is correct"""
         if not self.user_answer or not self.question.correct_answer:
@@ -473,8 +477,6 @@ class Answer(db.Model):
         user_answer_normalized = self.user_answer.strip().lower()
         correct_answer_normalized = self.question.correct_answer.strip().lower()
         return user_answer_normalized == correct_answer_normalized
-    
-
 
 # Feedback for quizzes
 class QuizFeedback(db.Model):
@@ -533,10 +535,71 @@ class QuestionEmotionData(db.Model):
     attempt = db.relationship('Attempt', backref='emotion_data')
 
 
+# ===== USER LOADER =====
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
+
+
+def create_default_roles():
+    # Check if roles exist
+    if Role.query.count() == 0:
+        # Create default roles
+        admin_role = Role(name='admin', description='Administrator with full access')
+        teacher_role = Role(name='teacher', description='Teacher with quiz creation access')
+        student_role = Role(name='student', description='Student with quiz taking access')
+        
+        db.session.add_all([admin_role, teacher_role, student_role])
+        db.session.commit()
+        print("Default roles created.")
+
+
+
+# Create default admin function
+def create_default_admin():
+    # Check if admin role exists
+    admin_role = Role.query.filter_by(name='Admin').first()
+    if not admin_role:
+        admin_role = Role(name='Admin', description='Administrator with full access')
+        db.session.add(admin_role)
+        db.session.commit()
+    
+    # Check if default admin exists
+    admin = User.query.filter_by(username='Admin').first()
+    if not admin:
+        admin = User(
+            unique_id=User.generate_unique_id('Admin', 'User'),
+            username='Admin',
+            email='admin@quizplatform.com',
+            first_name='Admin',
+            last_name='User',
+            role_id=admin_role.id,
+            is_admin=True
+        )
+        admin.set_password('20030909')
+        db.session.add(admin)
+        db.session.commit()
+
+
+def initialize_database():
+    """Initialize the database with required data"""
+    with app.app_context():
+        # Create tables if they don't exist
+        db.create_all()
+        
+        # Create default roles and admin user
+        try:
+            create_default_roles()
+            create_default_admin()
+        except Exception as e:
+            print(f"Error initializing database: {e}")
+
+# Create the database tables
 def create_tables():
-    db.create_all()
-
+    with app.app_context():
+        db.create_all()
+        initialize_database()
 
 
 def get_answer_emotion_summary(self):
@@ -579,37 +642,6 @@ def get_answer_emotion_summary(self):
         'neutral': round(neutral),
         'raw_data': emotions_data
     }
-
-
-# ===== USER LOADER =====
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-# Create default admin function
-def create_default_admin():
-    # Check if admin role exists
-    admin_role = Role.query.filter_by(name='Admin').first()
-    if not admin_role:
-        admin_role = Role(name='Admin', description='Administrator with full access')
-        db.session.add(admin_role)
-        db.session.commit()
-    
-    # Check if default admin exists
-    admin = User.query.filter_by(username='Admin').first()
-    if not admin:
-        admin = User(
-            unique_id=User.generate_unique_id('Admin', 'User'),
-            username='Admin',
-            email='admin@quizplatform.com',
-            first_name='Admin',
-            last_name='User',
-            role_id=admin_role.id,
-            is_admin=True
-        )
-        admin.set_password('20030909')
-        db.session.add(admin)
-        db.session.commit()
 
 
 @app.route('/analyze_emotion', methods=['POST'])
