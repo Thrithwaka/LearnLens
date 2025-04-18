@@ -56,29 +56,9 @@ if database_url:
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
-    # Add SSL mode and connection parameters for production
-    if 'sslmode=' not in database_url:
-        # Add SSL mode and connection pooling parameters
-        params = {
-            'sslmode': 'require',
-            'connect_timeout': 10,
-            'pool_size': 10,
-            'max_overflow': 2
-        }
-        
-        # Check if URL already has parameters
-        if '?' in database_url:
-            database_url += '&'
-        else:
-            database_url += '?'
-            
-        # Add parameters to URL
-        database_url += '&'.join(f"{key}={value}" for key, value in params.items())
-        
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'poolclass': QueuePool,
-        'pool_size': 10,
+        'pool_size': 5,
         'pool_timeout': 30,
         'pool_recycle': 1800,  # Recycle connections after 30 minutes
         'max_overflow': 2
