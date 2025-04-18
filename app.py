@@ -48,7 +48,7 @@ import time
 # Initialize Flask app ONCE
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'learnlens-secret-key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///learnlens.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
@@ -427,8 +427,13 @@ class Attempt(db.Model):
         if not self.answers:
             return 0
         
-        correct_answers = sum(1 for answer in self.answers 
-                             if answer.user_answer == answer.question.correct_answer)
+        correct_answers = 0
+        for answer in self.answers:
+            if answer.user_answer and answer.question.correct_answer:
+                user_answer_normalized = answer.user_answer.strip().lower()
+                correct_answer_normalized = answer.question.correct_answer.strip().lower()
+                if user_answer_normalized == correct_answer_normalized:
+                    correct_answers += 1
         
         return (correct_answers / len(self.answers)) * 100 if self.answers else 0
     
@@ -462,7 +467,12 @@ class Answer(db.Model):
     
     def get_correctness(self):
         """Check if the answer is correct"""
-        return self.user_answer == self.question.correct_answer
+        if not self.user_answer or not self.question.correct_answer:
+            return False
+            
+        user_answer_normalized = self.user_answer.strip().lower()
+        correct_answer_normalized = self.question.correct_answer.strip().lower()
+        return user_answer_normalized == correct_answer_normalized
     
 
 
@@ -522,6 +532,10 @@ class QuestionEmotionData(db.Model):
     question = db.relationship('Question', backref='emotion_data')
     attempt = db.relationship('Attempt', backref='emotion_data')
 
+
+
+def create_tables():
+    db.create_all()
 
 
 
@@ -799,6 +813,8 @@ def detect_emotion():
     except Exception as e:
         app.logger.error(f"Error in detect_emotion: {str(e)}")
         return jsonify({'success': False, 'message': str(e)})
+
+
 
 
 
@@ -1318,10 +1334,18 @@ def quiz_result(quiz_id):
     questions_with_answers = []
     for question in quiz.questions:
         answer = Answer.query.filter_by(attempt_id=attempt.id, question_id=question.id).first()
+        
+        # Fix: Normalize both answers before comparison
+        is_correct = False
+        if answer:
+            user_answer_normalized = answer.user_answer.strip() if answer.user_answer else ""
+            correct_answer_normalized = question.correct_answer.strip() if question.correct_answer else ""
+            is_correct = user_answer_normalized.lower() == correct_answer_normalized.lower()
+        
         questions_with_answers.append({
             'question': question,
             'user_answer': answer.user_answer if answer else None,
-            'is_correct': answer.user_answer == question.correct_answer if answer else False,
+            'is_correct': is_correct,
             'answer_time': answer.answer_time if answer else None,
             'emotions': answer.emotions if answer else None
         })
@@ -2045,7 +2069,41 @@ def quiz_detail(quiz_id):
     
     # If viewing as participant and quiz is completed
     if user_attempt and user_attempt.completed_at and not is_creator:
-        return render_template('quiz_result.html', quiz=quiz, attempt=user_attempt)
+        # Modified to use the enhanced quiz_result logic
+        score = user_attempt.calculate_score()
+        
+        # Get all questions with user answers
+        questions_with_answers = []
+        for question in quiz.questions:
+            answer = Answer.query.filter_by(attempt_id=user_attempt.id, question_id=question.id).first()
+            
+            # Fix: Normalize both answers before comparison
+            is_correct = False
+            if answer:
+                user_answer_normalized = answer.user_answer.strip() if answer.user_answer else ""
+                correct_answer_normalized = question.correct_answer.strip() if question.correct_answer else ""
+                is_correct = user_answer_normalized.lower() == correct_answer_normalized.lower()
+            
+            questions_with_answers.append({
+                'question': question,
+                'user_answer': answer.user_answer if answer else None,
+                'is_correct': is_correct,
+                'answer_time': answer.answer_time if answer else None,
+                'emotions': answer.emotions if answer else None
+            })
+        
+        # Get emotion summary if facial analysis was used
+        emotion_summary = user_attempt.get_emotion_summary() if quiz.use_facial_analysis else {}
+        
+        return render_template(
+            'quiz_result.html',
+            quiz=quiz,
+            attempt=user_attempt,
+            score=score,
+            questions_with_answers=questions_with_answers,
+            format_datetime=format_datetime,
+            emotion_summary=emotion_summary
+        )
     
     # If viewing as creator
     if is_creator:
