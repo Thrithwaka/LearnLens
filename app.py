@@ -4,6 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from authlib.integrations.flask_client import OAuth
 from flask_migrate import Migrate
+from flask_bcrypt import Bcrypt
 from random import choices, randint
 from string import ascii_uppercase
 import os
@@ -24,7 +25,7 @@ import json
 import os
 import random
 import string
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.pool import QueuePool
 from flask_sqlalchemy import SQLAlchemy
 import base64
@@ -78,10 +79,11 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Create upload directories with proper path handling
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'profiles'), exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'questions'), exist_ok=True)
-
 # Initialize extensions ONCE
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+login_manager = LoginManager(app)
+bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 emotion_api = Blueprint('emotion_api', __name__)
@@ -964,14 +966,15 @@ def register():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('choice'))
-        
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
-        # Check if user exists (could be username or email)
+        # Find user by username or email
         user = User.query.filter((User.username == username) | (User.email == username)).first()
         
+        # Check if user exists and password is correct
         if not user or not user.check_password(password):
             flash('Invalid username or password!', 'danger')
             return render_template('login.html')
@@ -984,10 +987,57 @@ def login():
         login_user(user)
         flash('Logged in successfully!', 'success')
         
-        # Redirect to choice page
+        # If user is admin, redirect to admin dashboard
+        if user.is_admin:
+            return redirect(url_for('admin'))
+        
+        # Otherwise redirect to choice page
         return redirect(url_for('choice'))
     
     return render_template('login.html')
+
+
+@app.route('/admin')
+@login_required
+def admin():
+    # Get basic statistics
+    total_users = User.query.count()
+    active_users = User.query.filter_by(is_active=True).count()
+    total_quizzes = Quiz.query.count()
+    active_quizzes = Quiz.query.filter_by(status='active').count()
+
+    # Get user registration data for the last 30 days
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    reg_data = db.session.query(
+        func.date(User.created_at).label('date'),
+        func.count(User.id).label('count')
+    ).filter(User.created_at >= thirty_days_ago)\
+     .group_by(func.date(User.created_at))\
+     .all()
+
+    reg_dates = [str(data.date) for data in reg_data]
+    reg_counts = [data.count for data in reg_data]
+
+    # Get quiz creation data
+    quiz_data = db.session.query(
+        func.date(Quiz.created_at).label('date'),
+        func.count(Quiz.id).label('count')
+    ).filter(Quiz.created_at >= thirty_days_ago)\
+     .group_by(func.date(Quiz.created_at))\
+     .all()
+
+    quiz_dates = [str(data.date) for data in quiz_data]
+    quiz_counts = [data.count for data in quiz_data]
+
+    return render_template('admin.html',
+                         total_users=total_users,
+                         active_users=active_users,
+                         total_quizzes=total_quizzes,
+                         active_quizzes=active_quizzes,
+                         reg_dates=reg_dates,
+                         reg_counts=reg_counts,
+                         quiz_dates=quiz_dates,
+                         quiz_counts=quiz_counts)
 
 
 @app.route('/login/google')
@@ -1020,6 +1070,12 @@ def google_authorize():
         # Generate unique ID
         unique_id = User.generate_unique_id(first_name, last_name)
         
+        # Generate a random secure password for OAuth users
+        import secrets
+        import string
+        random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(24))
+        hashed_password = bcrypt.generate_password_hash(random_password).decode('utf-8')
+        
         # Create new user with Google info
         user = User(
             unique_id=unique_id,
@@ -1030,7 +1086,7 @@ def google_authorize():
             profile_pic=user_info.get('picture', 'default.png'),
             role_id=default_role.id,
             is_active=True,
-            password=None  # No password for Google users
+            password=hashed_password  # Set random secure password instead of None
         )
         
         db.session.add(user)
@@ -1046,7 +1102,6 @@ def google_authorize():
     
     # Redirect to choice page
     return redirect(url_for('choice'))
-
 
 @app.route('/logout')
 @login_required
