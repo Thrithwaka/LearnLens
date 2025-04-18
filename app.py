@@ -294,17 +294,9 @@ class Quiz(db.Model):
                     all_emotions[question_id][emotion].append(value)
                 
                 # Count satisfaction levels
-                happy_value = emotions_data.get('happy', 0)
-                sad_value = emotions_data.get('sad', 0)
-                angry_value = emotions_data.get('angry', 0)
-                fear_value = emotions_data.get('fear', 0)
-                disgust_value = emotions_data.get('disgust', 0)
-                
-                unsatisfied_value = (sad_value + angry_value + fear_value + disgust_value) / 4
-                
-                if happy_value > unsatisfied_value:
+                if emotions_data.get('satisfied', 0) > emotions_data.get('unsatisfied', 0):
                     satisfaction_scores['satisfied'] += 1
-                elif unsatisfied_value > happy_value:
+                elif emotions_data.get('unsatisfied', 0) > emotions_data.get('satisfied', 0):
                     satisfaction_scores['unsatisfied'] += 1
                 else:
                     satisfaction_scores['neutral'] += 1
@@ -331,39 +323,8 @@ class Quiz(db.Model):
             for attempt in completed_attempts:
                 for answer in attempt.answers:
                     if answer.question_id == question.id:
-                        # Use the same logic for checking correctness as in the quiz_result view
-                        is_correct = False
-                        
-                        if answer.user_answer and question.correct_answer:
-                            # Handle option references (option1, option2, etc.)
-                            if answer.user_answer.startswith('option'):
-                                option_num = answer.user_answer[6:]  # Extract the number part
-                                
-                                # Direct comparison if correct_answer is an option number
-                                if option_num == question.correct_answer:
-                                    is_correct = True
-                                
-                                # Compare option values
-                                elif option_num.isdigit() and 1 <= int(option_num) <= 4:
-                                    selected_option_value = getattr(question, f'option{option_num}', '').strip().lower()
-                                    correct_answer = question.correct_answer.strip().lower()
-                                    
-                                    # Check if correct_answer is an option value
-                                    if selected_option_value == correct_answer:
-                                        is_correct = True
-                                    
-                                    # Check if correct_answer is an option number (1-4)
-                                    elif correct_answer in ['1', '2', '3', '4']:
-                                        correct_option_value = getattr(question, f'option{correct_answer}', '').strip().lower()
-                                        is_correct = (selected_option_value == correct_option_value)
-                            else:
-                                # Regular answer comparison
-                                user_answer = answer.user_answer.strip().lower()
-                                correct_answer = question.correct_answer.strip().lower()
-                                is_correct = (user_answer == correct_answer)
-                        
                         # Count correctness
-                        if is_correct:
+                        if answer.user_answer == question.correct_answer:
                             question_stats['correct_answers'] += 1
                         else:
                             question_stats['incorrect_answers'] += 1
@@ -374,8 +335,7 @@ class Quiz(db.Model):
                         
                         # Collect emotions
                         if answer.emotions:
-                            emotions_data = json.loads(answer.emotions) if isinstance(answer.emotions, str) else answer.emotions
-                            for emotion, value in emotions_data.items():
+                            for emotion, value in answer.emotions.items():
                                 if emotion not in question_emotions:
                                     question_emotions[emotion] = []
                                 question_emotions[emotion].append(value)
@@ -489,33 +449,10 @@ class Attempt(db.Model):
         correct_answers = 0
         for answer in self.answers:
             if answer.user_answer and answer.question.correct_answer:
-                # Handle the case where user_answer is stored as "option1", "option2", etc.
-                if answer.user_answer.startswith('option'):
-                    option_num = answer.user_answer[6:]  # Extract the number part
-                    if option_num.isdigit() and 1 <= int(option_num) <= 4:
-                        # Get the option value from the question
-                        option_value = getattr(answer.question, f'option{option_num}', None)
-                        if option_value:
-                            user_answer = option_value.strip().lower()
-                        else:
-                            user_answer = answer.user_answer.strip().lower()
-                    else:
-                        user_answer = answer.user_answer.strip().lower()
-                else:
-                    user_answer = answer.user_answer.strip().lower()
-                
-                correct_answer = answer.question.correct_answer.strip().lower()
-                
-                # Check for direct match
-                if user_answer == correct_answer:
+                user_answer_normalized = answer.user_answer.strip().lower()
+                correct_answer_normalized = answer.question.correct_answer.strip().lower()
+                if user_answer_normalized == correct_answer_normalized:
                     correct_answers += 1
-                    continue
-                    
-                # Alternative check: if correct_answer is a number from 1-4, it might refer to the option number
-                if correct_answer in ['1', '2', '3', '4']:
-                    correct_option_value = getattr(answer.question, f'option{correct_answer}', '').strip().lower()
-                    if user_answer == correct_option_value:
-                        correct_answers += 1
         
         return (correct_answers / len(self.answers)) * 100 if self.answers else 0
     
@@ -1500,46 +1437,16 @@ def quiz_result(quiz_id):
     for question in quiz.questions:
         answer = Answer.query.filter_by(attempt_id=attempt.id, question_id=question.id).first()
         
-        # Initialize correctness as False
+        # Fix: Normalize both answers before comparison
         is_correct = False
-        
-        # Check if answer exists
         if answer:
-            # Check if both user_answer and correct_answer exist
-            if answer.user_answer and question.correct_answer:
-                # Handle option references (option1, option2, etc.)
-                if answer.user_answer.startswith('option'):
-                    option_num = answer.user_answer[6:]  # Extract the number part
-                    
-                    # Direct comparison if correct_answer is an option number
-                    if option_num == question.correct_answer:
-                        is_correct = True
-                    
-                    # Compare option values
-                    elif option_num.isdigit() and 1 <= int(option_num) <= 4:
-                        selected_option_value = getattr(question, f'option{option_num}', '').strip().lower()
-                        correct_answer = question.correct_answer.strip().lower()
-                        
-                        # Check if correct_answer is an option value
-                        if selected_option_value == correct_answer:
-                            is_correct = True
-                        
-                        # Check if correct_answer is an option number (1-4)
-                        elif correct_answer in ['1', '2', '3', '4']:
-                            correct_option_value = getattr(question, f'option{correct_answer}', '').strip().lower()
-                            is_correct = (selected_option_value == correct_option_value)
-                else:
-                    # Regular answer comparison
-                    user_answer = answer.user_answer.strip().lower()
-                    correct_answer = question.correct_answer.strip().lower()
-                    is_correct = (user_answer == correct_answer)
+            user_answer_normalized = answer.user_answer.strip() if answer.user_answer else ""
+            correct_answer_normalized = question.correct_answer.strip() if question.correct_answer else ""
+            is_correct = user_answer_normalized.lower() == correct_answer_normalized.lower()
         
         questions_with_answers.append({
             'question': question,
             'user_answer': answer.user_answer if answer else None,
-            'display_user_answer': get_option_display_value(question, answer.user_answer) if answer else None,
-            'correct_answer': question.correct_answer,
-            'display_correct_answer': get_option_display_value(question, question.correct_answer),
             'is_correct': is_correct,
             'answer_time': answer.answer_time if answer else None,
             'emotions': answer.emotions if answer else None
@@ -1557,18 +1464,6 @@ def quiz_result(quiz_id):
         format_datetime=format_datetime,
         emotion_summary=emotion_summary
     )
-
-# Helper function to get display value for options
-def get_option_display_value(question, option_reference):
-    """Convert option references to their actual values for display"""
-    if option_reference and option_reference.startswith('option') and len(option_reference) > 6:
-        option_num = option_reference[6:]
-        if option_num.isdigit() and 1 <= int(option_num) <= 4:
-            return getattr(question, f'option{option_num}', option_reference)
-    return option_reference
-
-
-
 
 @app.route('/quiz/join/<access_code>')
 def join_quiz_by_link(access_code):
@@ -1783,6 +1678,11 @@ def take_quiz(quiz_id):
     )
 
 
+
+
+
+
+
 @app.route('/quiz/answer/<int:quiz_id>/<int:question_id>', methods=['POST'])
 @login_required
 def submit_answer(quiz_id, question_id):
@@ -1812,8 +1712,19 @@ def submit_answer(quiz_id, question_id):
         return jsonify({'success': False, 'message': 'Question already answered'})
     
     # Process answer
-    user_answer = request.form.get('answer')
+    user_option = request.form.get('answer')  # This will be option1, option2, etc.
     answer_time = float(request.form.get('answer_time', 0))
+    
+    # Convert option identifier to actual answer value
+    actual_answer = None
+    if user_option == 'option1':
+        actual_answer = getattr(question, 'option1', '')
+    elif user_option == 'option2':
+        actual_answer = getattr(question, 'option2', '')
+    elif user_option == 'option3':
+        actual_answer = getattr(question, 'option3', '')
+    elif user_option == 'option4':
+        actual_answer = getattr(question, 'option4', '')
     
     # Process emotions data if available
     emotions_data = request.form.get('emotions_data')
@@ -1828,11 +1739,11 @@ def submit_answer(quiz_id, question_id):
         except json.JSONDecodeError:
             emotions_json = {}
     
-    # Create answer record
+    # Create answer record with the actual answer value instead of the option identifier
     answer = Answer(
         attempt_id=attempt.id,
         question_id=question_id,
-        user_answer=user_answer,
+        user_answer=actual_answer,  # Store the actual answer value
         answer_time=answer_time,
         emotions=emotions_json
     )
@@ -1850,8 +1761,6 @@ def submit_answer(quiz_id, question_id):
         return jsonify({'success': True, 'completed': True, 'redirect': url_for('quiz_result', quiz_id=quiz_id)})
     
     return jsonify({'success': True, 'completed': False})
-
-
 
 @app.route('/quiz/analytics/<int:quiz_id>')
 @login_required
@@ -2272,7 +2181,7 @@ def quiz_detail(quiz_id):
     
     # If viewing as participant and quiz is completed
     if user_attempt and user_attempt.completed_at and not is_creator:
-        # Use the same calculation as the enhanced quiz_result
+        # Modified to use the enhanced quiz_result logic
         score = user_attempt.calculate_score()
         
         # Get all questions with user answers
@@ -2280,46 +2189,16 @@ def quiz_detail(quiz_id):
         for question in quiz.questions:
             answer = Answer.query.filter_by(attempt_id=user_attempt.id, question_id=question.id).first()
             
-            # Initialize correctness as False
+            # Fix: Normalize both answers before comparison
             is_correct = False
-            
-            # Check if answer exists
             if answer:
-                # Check if both user_answer and correct_answer exist
-                if answer.user_answer and question.correct_answer:
-                    # Handle option references (option1, option2, etc.)
-                    if answer.user_answer.startswith('option'):
-                        option_num = answer.user_answer[6:]  # Extract the number part
-                        
-                        # Direct comparison if correct_answer is an option number
-                        if option_num == question.correct_answer:
-                            is_correct = True
-                        
-                        # Compare option values
-                        elif option_num.isdigit() and 1 <= int(option_num) <= 4:
-                            selected_option_value = getattr(question, f'option{option_num}', '').strip().lower()
-                            correct_answer = question.correct_answer.strip().lower()
-                            
-                            # Check if correct_answer is an option value
-                            if selected_option_value == correct_answer:
-                                is_correct = True
-                            
-                            # Check if correct_answer is an option number (1-4)
-                            elif correct_answer in ['1', '2', '3', '4']:
-                                correct_option_value = getattr(question, f'option{correct_answer}', '').strip().lower()
-                                is_correct = (selected_option_value == correct_option_value)
-                    else:
-                        # Regular answer comparison
-                        user_answer = answer.user_answer.strip().lower()
-                        correct_answer = question.correct_answer.strip().lower()
-                        is_correct = (user_answer == correct_answer)
+                user_answer_normalized = answer.user_answer.strip() if answer.user_answer else ""
+                correct_answer_normalized = question.correct_answer.strip() if question.correct_answer else ""
+                is_correct = user_answer_normalized.lower() == correct_answer_normalized.lower()
             
             questions_with_answers.append({
                 'question': question,
                 'user_answer': answer.user_answer if answer else None,
-                'display_user_answer': get_option_display_value(question, answer.user_answer) if answer else None,
-                'correct_answer': question.correct_answer,
-                'display_correct_answer': get_option_display_value(question, question.correct_answer),
                 'is_correct': is_correct,
                 'answer_time': answer.answer_time if answer else None,
                 'emotions': answer.emotions if answer else None
