@@ -25,6 +25,7 @@ import os
 import random
 import string
 from sqlalchemy import or_
+from sqlalchemy.pool import QueuePool
 from flask_sqlalchemy import SQLAlchemy
 import base64
 from datetime import datetime
@@ -45,30 +46,56 @@ import time
 
 
 
-# Initialize Flask app ONCE
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'learnlens-secret-key')
 
-# Database configuration
+# Database configuration - improved for Render deployment
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
     # Handle both postgres:// and postgresql:// URI formats
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
-    # Ensure proper connection parameters
+    # Add SSL mode and connection parameters for production
+    if 'sslmode=' not in database_url:
+        # Add SSL mode and connection pooling parameters
+        params = {
+            'sslmode': 'require',
+            'connect_timeout': 10,
+            'pool_size': 10,
+            'max_overflow': 2
+        }
+        
+        # Check if URL already has parameters
+        if '?' in database_url:
+            database_url += '&'
+        else:
+            database_url += '?'
+            
+        # Add parameters to URL
+        database_url += '&'.join(f"{key}={value}" for key, value in params.items())
+        
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'poolclass': QueuePool,
+        'pool_size': 10,
+        'pool_timeout': 30,
+        'pool_recycle': 1800,  # Recycle connections after 30 minutes
+        'max_overflow': 2
+    }
 else:
     # Fallback to SQLite for local development
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///learnlens.db'
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///learnlens.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
-# Create upload directories
+# Create upload directories - ensure proper handling for Render
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'static/uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Create upload directories with proper path handling
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'profiles'), exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'questions'), exist_ok=True)
 
@@ -96,11 +123,7 @@ google = oauth.register(
 )
 
 # Upload configuration
-UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -549,6 +572,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
+# ===== INITIALIZATION FUNCTIONS =====
 
 def create_default_roles():
     # Check if roles exist
@@ -563,75 +587,54 @@ def create_default_roles():
         print("Default roles created.")
 
 
-
 # Create default admin function
 def create_default_admin():
     # Check if admin role exists
-    admin_role = Role.query.filter_by(name='Admin').first()
+    admin_role = Role.query.filter_by(name='admin').first()
     if not admin_role:
-        admin_role = Role(name='Admin', description='Administrator with full access')
+        admin_role = Role(name='admin', description='Administrator with full access')
         db.session.add(admin_role)
         db.session.commit()
     
     # Check if default admin exists
-    admin = User.query.filter_by(username='Admin').first()
+    admin = User.query.filter_by(username='admin').first()
     if not admin:
         admin = User(
             unique_id=User.generate_unique_id('Admin', 'User'),
-            username='Admin',
-            email='admin@quizplatform.com',
+            username='admin',
+            email='admin@learnlens.com',
             first_name='Admin',
             last_name='User',
             role_id=admin_role.id,
             is_admin=True
         )
-        admin.set_password('20030909')
+        admin.set_password('adminpassword123')  # Set a default password
         db.session.add(admin)
         db.session.commit()
+        print("Default admin created.")
 
 
 def initialize_database():
-    with app.app_context():
-        try:
-            # Create all tables
-            db.create_all()
-            
-            # Check if database is empty and needs initial data
-            if Role.query.count() == 0:
-                # Create default roles
-                admin_role = Role(name='admin', description='Administrator with full access')
-                teacher_role = Role(name='teacher', description='Teacher with quiz creation access')
-                student_role = Role(name='student', description='Student with quiz taking access')
-                
-                db.session.add_all([admin_role, teacher_role, student_role])
-                db.session.commit()
-                
-                # Create admin user
-                admin = User(
-                    unique_id=User.generate_unique_id("Admin", "User"),
-                    username="admin",
-                    email="admin@learnlens.com",
-                    first_name="Admin",
-                    last_name="User",
-                    role_id=admin_role.id,
-                    is_admin=True
-                )
-                admin.set_password("adminpassword123")  # Set a default password
-                
-                db.session.add(admin)
-                db.session.commit()
-                print("Database initialized with default data")
-            
-            print("Database setup complete")
-        except Exception as e:
-            print(f"Database initialization error: {e}")
-            # Consider adding more specific error handling here
-
-# Create the database tables
-def create_tables():
-    with app.app_context():
+    try:
+        # Create all tables
         db.create_all()
-        initialize_database()
+        
+        # Check if database is empty and needs initial data
+        if Role.query.count() == 0:
+            create_default_roles()
+            create_default_admin()
+            print("Database initialized with default data")
+        
+        print("Database setup complete")
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        # Log the error for debugging
+
+
+# Create the database tables within an application context
+def create_tables():
+    db.create_all()
+    initialize_database()
 
 
 def get_answer_emotion_summary(self):
