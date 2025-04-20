@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, session
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, session, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -2391,6 +2391,14 @@ def join_quiz():
 #         db.session.add(admin)
 #         db.session.commit()
 
+
+@app.route('/robots.txt')
+def robots():
+    return send_from_directory(app.static_folder, 'robots.txt')
+
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory(app.static_folder, 'sitemap.xml')
 
 
 # Create all tables and default admin

@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /quiz/create
+Disallow: /edit_profile
+Disallow: /api/
+
+Sitemap: https://learnlens.onrender.com/sitemap.xml
