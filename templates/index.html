@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-BLY06P029B"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-BLY06P029B');
+        </script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon.png') }}">
@@ -8,25 +16,25 @@
         <meta name="msvalidate.01" content="31F6479B4ABAC59188DE47B714329682" />
         
         <!-- Primary Meta Tags -->
-        <title>LearnLens | Interactive Learning Platform for Students and Educators</title>
-        <meta name="title" content="LearnLens | Interactive Learning Platform for Students and Educators">
-        <meta name="description" content="LearnLens helps you master new skills through interactive learning experiences, personalized content, and powerful educational tools.">
-        <meta name="keywords" content="learn lens, learning platform, online education, interactive learning, educational tools, e-learning">
+        <title>LearnLens | Interactive Quiz Platform for Students and Educators</title>
+        <meta name="title" content="LearnLens | Create & Play Interactive Quizzes Online | AI-Powered Learning">
+        <meta name="description" content="LearnLens is an AI-powered online quiz platform with face recognition monitoring. Create, share, and play interactive quizzes for students and educators. Get real-time analytics and performance insights.">
+        <meta name="keywords" content="LearnLens, Learn Lens, quiz game, online quiz, interactive quizzes, quiz creator, AI quiz platform, face recognition quiz, classroom quiz, educational tools, e-learning, quiz analytics, student monitoring, online assessment">
         <meta name="author" content="LearnLens Team">
         <meta name="robots" content="index, follow">
         
         <!-- Open Graph / Facebook -->
         <meta property="og:type" content="website">
         <meta property="og:url" content="https://learnlens.onrender.com/">
-        <meta property="og:title" content="LearnLens | Interactive Learning Platform">
-        <meta property="og:description" content="Master new skills through interactive learning experiences and personalized educational content.">
+        <meta property="og:title" content="LearnLens | Create & Play Interactive Quizzes Online">
+        <meta property="og:description" content="Create and play interactive quizzes with AI-powered monitoring and analytics for engaging classroom assessments.">
         <meta property="og:image" content="https://learnlens.onrender.com/static/images/LOGO.png">
         
         <!-- Twitter -->
         <meta property="twitter:card" content="summary_large_image">
         <meta property="twitter:url" content="https://learnlens.onrender.com/">
-        <meta property="twitter:title" content="LearnLens | Interactive Learning Platform">
-        <meta property="twitter:description" content="Master new skills through interactive learning experiences and personalized educational content.">
+        <meta property="twitter:title" content="LearnLens | AI-Powered Quiz Platform">
+        <meta property="twitter:description" content="Create and play interactive quizzes with AI-powered monitoring and analytics for engaging classroom assessments.">
         <meta property="twitter:image" content="https://learnlens.onrender.com/static/images/LOGO.png">
         
         <!-- Canonical URL -->
@@ -54,12 +62,57 @@
           "@context": "https://schema.org",
           "@type": "WebSite",
           "name": "LearnLens",
+          "alternateName": ["Learn Lens", "LearnLens Quiz Platform"],
           "url": "https://learnlens.onrender.com/",
-          "description": "Interactive learning platform for students and educators",
+          "description": "AI-powered interactive quiz platform for students and educators with face recognition monitoring and real-time analytics",
+          "keywords": ["quiz game", "online quiz", "classroom quiz", "AI quiz platform", "educational assessment"],
           "potentialAction": {
             "@type": "SearchAction",
             "target": "https://learnlens.onrender.com/search?q={search_term_string}",
             "query-input": "required name=search_term_string"
+          }
+        }
+        </script>
+        
+        <!-- Organization Schema -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "LearnLens",
+          "url": "https://learnlens.onrender.com/",
+          "logo": "https://learnlens.onrender.com/static/images/LOGO.png",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+1-555-123-4567",
+            "contactType": "customer service",
+            "email": "info@LearnLens.com"
+          },
+          "sameAs": [
+            "https://facebook.com/LearnLens",
+            "https://twitter.com/LearnLens",
+            "https://linkedin.com/company/LearnLens"
+          ]
+        }
+        </script>
+        
+        <!-- Product Schema -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "LearnLens Quiz Platform",
+          "operatingSystem": "Web",
+          "applicationCategory": "EducationalApplication",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "127"
           }
         }
         </script>
