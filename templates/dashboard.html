@@ -18,6 +18,20 @@
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
+    <div class="flash-messages-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}" id="flash-message-{{ loop.index }}">
+                        <div class="flash-content">
+                            <span class="flash-text">{{ message }}</span>
+                            <button class="flash-close" onclick="closeFlashMessage('flash-message-{{ loop.index }}')">×</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
     <div class="dashboard-container">
         <header class="main-header">
             <div class="header-content">

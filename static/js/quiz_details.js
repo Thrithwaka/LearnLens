@@ -31,7 +31,47 @@ document.addEventListener('DOMContentLoaded', function() {
     if (endQuizBtn) {
         endQuizBtn.addEventListener('click', function() {
             if (confirm('Are you sure you want to end this quiz? No more responses will be accepted.')) {
-                endQuiz();
+                // Get values from data attributes
+                const url = endQuizBtn.getAttribute('data-url');
+                const csrf = endQuizBtn.getAttribute('data-csrf');
+                
+                // Disable the button to prevent multiple clicks
+                endQuizBtn.disabled = true;
+                endQuizBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ending...';
+                
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrf,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({}) // Send empty object as body
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        console.log('Quiz ended successfully, redirecting to:', data.redirect);
+                        // Force redirect to dashboard with cache-busting parameter
+                        window.location.href = data.redirect + '?t=' + new Date().getTime();
+                    } else {
+                        // Re-enable the button
+                        endQuizBtn.disabled = false;
+                        endQuizBtn.innerHTML = '<i class="fas fa-stop"></i> End Quiz';
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Re-enable the button
+                    endQuizBtn.disabled = false;
+                    endQuizBtn.innerHTML = '<i class="fas fa-stop"></i> End Quiz';
+                    alert('An error occurred while ending the quiz.');
+                });
             }
         });
     }
@@ -62,29 +102,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    function endQuiz() {
-        // Get values from data attributes
-        const url = endQuizBtn.getAttribute('data-url');
-        const csrf = endQuizBtn.getAttribute('data-csrf');
-        
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrf,
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while ending the quiz.');
+    // Add flash message timeout functionality
+    const flashMessages = document.querySelectorAll('.flash-message');
+    if (flashMessages.length > 0) {
+        flashMessages.forEach(message => {
+            setTimeout(() => {
+                // Fade out effect
+                message.style.transition = 'opacity 0.5s ease';
+                message.style.opacity = '0';
+                
+                // Remove from DOM after fade completes
+                setTimeout(() => {
+                    message.remove();
+                }, 500);
+            }, 5000); // Hide after 5 seconds
         });
     }
     

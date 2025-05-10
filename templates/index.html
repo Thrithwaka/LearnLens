@@ -55,6 +55,8 @@
         
         <!-- AOS Library -->
         <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+        <script src="{{ url_for('static', filename='js/flash.js') }}"></script>
         
         <!-- JSON-LD structured data for better SEO -->
         <script type="application/ld+json">
@@ -131,6 +133,7 @@
                     <li><a href="#about" class="text-decoration-none text-dark">About</a></li>
                     <li><a href="#features" class="text-decoration-none text-dark">Features</a></li>
                     <li><a href="#contact" class="text-decoration-none text-dark">Contact</a></li>
+                    <li><a href="/privacy-policy" class="text-decoration-none text-dark">Privacy Policy</a></li>
                 </ul>
                 <!-- Mobile auth buttons inside nav -->
                 <div class="mobile-auth-buttons">
@@ -385,31 +388,35 @@ h2 {
     <!-- Existing Sections (Home, About, Features) Remain Same -->
 
     <!-- Contact Section -->
-    <section id="contact" class="contact-section">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-md-8 text-center">
-                    <h2 class="mb-4">Contact Us</h2>
-                    <p class="mb-5">Have questions? Get in touch with our team</p>
-                    
-                    <form class="row g-3">
-                        <div class="col-md-6">
-                            <input type="text" class="form-control" placeholder="Your Name">
-                        </div>
-                        <div class="col-md-6">
-                            <input type="email" class="form-control" placeholder="Your Email">
-                        </div>
-                        <div class="col-12">
-                            <textarea class="form-control" rows="4" placeholder="Your Message"></textarea>
-                        </div>
-                        <div class="col-12">
-                            <button class="btn btn-light">Send Message</button>
-                        </div>
-                    </form>
-                </div>
+    <!-- Contact Section -->
+<section id="contact" class="contact-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h2 class="mb-4">Contact Us</h2>
+                <p class="mb-5">Have questions? Get in touch with our team</p>
+                
+                <form class="row g-3" id="contactForm" method="POST" action="/send_message">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" name="name" placeholder="Your Name" required>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="email" class="form-control" name="email" placeholder="Your Email" required>
+                    </div>
+                    <div class="col-12">
+                        <textarea class="form-control" rows="4" name="message" placeholder="Your Message" required></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-light">Send Message</button>
+                    </div>
+                    <div class="col-12 mt-3" id="formMessage" style="display: none;">
+                        <div class="alert" role="alert"></div>
+                    </div>
+                </form>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
     <!-- Footer -->
     <footer>
@@ -430,9 +437,9 @@ h2 {
                 <div class="col-md-3">
                     <h5>Contact Info</h5>
                     <ul class="list-unstyled">
-                        <li>Email: info@LearnLens.com</li>
-                        <li>Phone: (555) 123-4567</li>
-                        <li>Address: 123 AI Street, Tech City</li>
+                        <li>Email: productspreethi@gmail.com</li>
+                        <li>Phone: loading ...</li>
+                        <li>Address: loading... </li>
                     </ul>
                 </div>
                 <div class="col-md-3">
@@ -445,7 +452,7 @@ h2 {
                 </div>
             </div>
             <hr class="mt-5">
-            <p class="text-center mb-0">&copy; 2023 Preethi AI. All rights reserved.</p>
+            <p class="text-center mb-0">&copy; 2025 Preethi AI. All rights reserved.</p>
         </div>
     </footer>
 

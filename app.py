@@ -43,6 +43,8 @@ from PIL import Image
 from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 import time
+import smtplib
+from email.message import EmailMessage
 
 
 
@@ -872,6 +874,53 @@ def detect_emotion():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        message = request.form.get('message')
+        
+        try:
+            # Create email
+            msg = EmailMessage()
+            msg['Subject'] = f'New Contact Form Submission from {name}'
+            msg['From'] = email
+            msg['To'] = 'productspreethi@gmail.com'
+            
+            email_content = f"""
+            New message from Learn Lens website:
+            
+            Name: {name}
+            Email: {email}
+            
+            Message:
+            {message}
+            """
+            
+            msg.set_content(email_content)
+            
+            # Send email using SMTP
+            # Note: In production, you should use environment variables for these credentials
+            smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+            smtp_port = int(os.environ.get('SMTP_PORT', 587))
+            smtp_username = os.environ.get('SMTP_USERNAME', 'your-email@gmail.com')
+            smtp_password = os.environ.get('SMTP_PASSWORD', 'your-app-password')
+            
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_username, smtp_password)
+                server.send_message(msg)
+            
+            return jsonify({'status': 'success', 'message': 'Your message has been sent successfully!'})
+        
+        except Exception as e:
+            print(f"Error sending email: {str(e)}")
+            return jsonify({'status': 'error', 'message': 'Failed to send message. Please try again later.'}), 500
+
+
 
 @app.route('/about')
 def about():
@@ -2275,9 +2324,22 @@ def end_quiz(quiz_id):
     # End the quiz
     quiz.status = 'ended'
     quiz.ended_at = datetime.now()
-    db.session.commit()
     
-    return jsonify({'success': True})
+    try:
+        db.session.commit()
+        
+        # Set flash message for dashboard
+        flash('Quiz has been successfully ended', 'success')
+        
+        # Return success with redirect info - explicitly give the full dashboard URL
+        return jsonify({
+            'success': True,
+            'redirect': url_for('dashboard', _external=True)
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error ending quiz: {str(e)}")
+        return jsonify({'success': False, 'message': 'Database error occurred'})
 
 @app.route('/quiz/delete/<int:quiz_id>')
 @login_required
@@ -2390,6 +2452,11 @@ def join_quiz():
 #         admin.set_password('admin123')
 #         db.session.add(admin)
 #         db.session.commit()
+
+@app.route('/privacy-policy')
+def privacy_policy():
+    """Render the privacy policy page"""
+    return render_template('privacy_policy.html')
 
 
 @app.route('/robots.txt')
