@@ -53,27 +53,22 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'learnlens-secret-key')
 
 # Database configuration - improved for Render deployment
-database_url = os.environ.get('DATABASE_URL', 'postgresql://learnlens_1_db_user:l7mpt3iW1mKAKiVcZ84tlo3r9ceiK2tY@dpg-d0kqg67fte5s738to4l0-a/learnlens_1_db')
-
-# Handle both postgres:// and postgresql:// URI formats
-if database_url and database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-
-# Connection pool settings optimized for Render's free tier
-if database_url.startswith('postgresql://'):
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    # Handle both postgres:// and postgresql:// URI formats
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 3,         # Reduced for free tier limitations
+        'pool_size': 5,
         'pool_timeout': 30,
-        'pool_recycle': 1200,   # Recycle connections after 20 minutes
-        'max_overflow': 1,      # Reduced for free tier
-        'connect_args': {
-            'connect_timeout': 10  # Connection timeout in seconds
-        }
+        'pool_recycle': 1800,  # Recycle connections after 30 minutes
+        'max_overflow': 2
     }
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Reduce overheads
+else:
+    # Fallback to SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///learnlens.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
