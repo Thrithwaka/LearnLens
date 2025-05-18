@@ -53,22 +53,27 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'learnlens-secret-key')
 
 # Database configuration - improved for Render deployment
-database_url = os.environ.get('DATABASE_URL')
-if database_url:
-    # Handle both postgres:// and postgresql:// URI formats
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+database_url = os.environ.get('DATABASE_URL', 'postgresql://learnlens_1_db_user:l7mpt3iW1mKAKiVcZ84tlo3r9ceiK2tY@dpg-d0kqg67fte5s738to4l0-a/learnlens_1_db')
+
+# Handle both postgres:// and postgresql:// URI formats
+if database_url and database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+
+# Connection pool settings optimized for Render's free tier
+if database_url.startswith('postgresql://'):
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 5,
+        'pool_size': 3,         # Reduced for free tier limitations
         'pool_timeout': 30,
-        'pool_recycle': 1800,  # Recycle connections after 30 minutes
-        'max_overflow': 2
+        'pool_recycle': 1200,   # Recycle connections after 20 minutes
+        'max_overflow': 1,      # Reduced for free tier
+        'connect_args': {
+            'connect_timeout': 10  # Connection timeout in seconds
+        }
     }
-else:
-    # Fallback to SQLite for local development
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///learnlens.db'
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Reduce overheads
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -879,15 +884,23 @@ def index():
 @app.route('/send_message', methods=['POST'])
 def send_message():
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        message = request.form.get('message')
-        
         try:
+            name = request.form.get('name')
+            email = request.form.get('email') 
+            message = request.form.get('message')
+            
+            # Validate required fields
+            if not all([name, email, message]):
+                return jsonify({
+                    'status': 'error', 
+                    'message': 'All fields are required'
+                }), 400
+                
             # Create email
             msg = EmailMessage()
             msg['Subject'] = f'New Contact Form Submission from {name}'
-            msg['From'] = email
+            msg['From'] = 'your-application-email@domain.com'  # Should be the sender email, not the user's
+            msg['Reply-To'] = email  # Set the user's email as reply-to
             msg['To'] = 'productspreethi@gmail.com'
             
             email_content = f"""
@@ -902,23 +915,37 @@ def send_message():
             
             msg.set_content(email_content)
             
-            # Send email using SMTP
-            # Note: In production, you should use environment variables for these credentials
+            # Get SMTP credentials - use environment variables
             smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
             smtp_port = int(os.environ.get('SMTP_PORT', 587))
-            smtp_username = os.environ.get('SMTP_USERNAME', 'your-email@gmail.com')
-            smtp_password = os.environ.get('SMTP_PASSWORD', 'your-app-password')
+            smtp_username = os.environ.get('SMTP_USERNAME')
+            smtp_password = os.environ.get('SMTP_PASSWORD')
             
+            # Check if credentials are available
+            if not smtp_username or not smtp_password:
+                app.logger.error("SMTP credentials not configured")
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Email service not configured properly. Please contact the administrator.'
+                }), 500
+            
+            # Send email with better error handling
             with smtplib.SMTP(smtp_server, smtp_port) as server:
                 server.starttls()
                 server.login(smtp_username, smtp_password)
                 server.send_message(msg)
+                
+            return jsonify({
+                'status': 'success', 
+                'message': 'Your message has been sent successfully!'
+            })
             
-            return jsonify({'status': 'success', 'message': 'Your message has been sent successfully!'})
-        
         except Exception as e:
-            print(f"Error sending email: {str(e)}")
-            return jsonify({'status': 'error', 'message': 'Failed to send message. Please try again later.'}), 500
+            app.logger.error(f"Error sending email: {str(e)}")
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to send message. Please try again later.'
+            }), 500
 
 
 
